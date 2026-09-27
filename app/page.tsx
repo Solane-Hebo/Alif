@@ -8,8 +8,10 @@ import {
 import { StatCard } from "@/components/dashboard/stat-card";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { RevenueProfitChart } from "@/components/dashboard/revenue-profit-chart";
+import { requireUser } from "@/lib/auth/guards";
 
-export default function Home() {
+export default async function Home() {
+  const user = await requireUser();
   return (
     <DashboardLayout>
       <section aria-labelledby="dashboard-heading">

@@ -10,6 +10,10 @@ import {
   Users,
 } from "lucide-react";
 
+type AppSidebarProps = {
+  organizationName: string;
+};
+
 const navigation = [
   { name: "Dashboard", icon: LayoutDashboard },
   { name: "Sales", icon: ShoppingCart },
@@ -20,20 +24,27 @@ const navigation = [
   { name: "Settings", icon: Settings },
 ];
 
-export function AppSidebar() {
+export function AppSidebar({
+  organizationName,
+}: AppSidebarProps) {
   return (
     <aside className="hidden min-h-screen w-64 border-r bg-white lg:block">
       <div className="flex h-20 items-center border-b px-6">
         <div
-          className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-lg font-bold text-white"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-lg font-bold text-white"
           aria-hidden="true"
         >
-          M
+          {organizationName.charAt(0).toUpperCase()}
         </div>
 
-        <div className="ml-3">
-          <p className="font-bold text-slate-900">MyStore</p>
-          <p className="text-xs text-slate-500">Sales Management</p>
+        <div className="ml-3 min-w-0">
+          <p className="truncate font-bold text-slate-900">
+            {organizationName}
+          </p>
+
+          <p className="text-xs text-slate-500">
+            Sales Management
+          </p>
         </div>
       </div>
 
@@ -52,7 +63,11 @@ export function AppSidebar() {
                       : "text-slate-600 hover:bg-emerald-50 hover:text-emerald-700"
                   }`}
                 >
-                  <Icon className="h-5 w-5" aria-hidden="true" />
+                  <Icon
+                    className="h-5 w-5"
+                    aria-hidden="true"
+                  />
+
                   {item.name}
                 </button>
               </li>

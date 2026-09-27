@@ -29,6 +29,8 @@ const userSchema = new Schema(
       required: true,
       trim: true,
       lowercase: true,
+      unique: true,
+      index: true,
     },
 
     passwordHash: {
@@ -53,27 +55,17 @@ const userSchema = new Schema(
       type: Date,
       default: null,
     },
+    sessionVersion: {
+  type: Number,
+  required: true,
+  default: 0,
+},
   },
   {
     timestamps: true,
   }
 );
 
-/*
- * A user email must be unique inside an organization.
- *
- * This allows the data model to support the same email address
- * belonging to separate organizations if we choose to allow that.
- */
-userSchema.index(
-  {
-    organizationId: 1,
-    email: 1,
-  },
-  {
-    unique: true,
-  }
-);
 
 export type UserDocument = InferSchemaType<typeof userSchema>;
 
