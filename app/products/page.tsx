@@ -1,4 +1,5 @@
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { ProductActions } from "@/components/products/product-actions";
 import { ProductForm } from "@/components/products/product-form";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -96,6 +97,13 @@ export default async function ProductsPage() {
                   >
                     Stock
                   </th>
+
+                  <th
+                    scope="col"
+                    className="px-4 py-3 text-right font-semibold"
+                  >
+                    Actions
+                  </th>
                 </tr>
               </thead>
 
@@ -129,13 +137,19 @@ export default async function ProductsPage() {
                     <td className="px-4 py-3 text-right">
                       {product.stockQuantity}
                     </td>
+
+                    <td className="px-4 py-3">
+                      <ProductActions
+                        product={product}
+                      />
+                    </td>
                   </tr>
                 ))}
 
                 {products.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={7}
                       className="px-4 py-10 text-center text-slate-500"
                     >
                       No products yet. Add your first
