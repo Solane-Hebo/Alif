@@ -64,6 +64,18 @@ export const createProductSchema = z.object({
     ),
 });
 
+export const updateProductSchema =
+  createProductSchema.extend({
+    productId: z
+      .string()
+      .trim()
+      .min(1, "Product ID is required."),
+  });
+
+export type UpdateProductInput = z.infer<
+  typeof updateProductSchema
+>;
+
 export type CreateProductInput = z.infer<
   typeof createProductSchema
 >;
