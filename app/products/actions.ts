@@ -49,7 +49,8 @@ export async function createProductAction(
     };
   }
 
-  const result = await createProduct(parsed.data);
+  const result =
+    await createProduct(parsed.data);
 
   if (!result.success) {
     return {
@@ -94,15 +95,21 @@ export async function updateProductAction(
     };
   }
 
-  const result = await updateProduct(
-    parsed.data
-  );
+  const result =
+    await updateProduct(parsed.data);
 
   if (!result.success) {
     if (result.reason === "SKU_EXISTS") {
       return {
         error:
           "A product with this SKU already exists.",
+      };
+    }
+
+    if (result.reason === "FORBIDDEN") {
+      return {
+        error:
+          "You do not have permission to edit products.",
       };
     }
 

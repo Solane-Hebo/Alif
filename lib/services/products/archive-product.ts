@@ -9,14 +9,28 @@ import { Product } from "@/lib/models/product.model";
 export async function archiveProduct(
   productId: string
 ) {
-  const { organizationId, userId } =
-    await getTenantContext();
+  const {
+    organizationId,
+    userId,
+    role,
+  } = await getTenantContext();
+
+  // Only ADMIN may archive products.
+  if (role !== "ADMIN") {
+    return {
+      success: false as const,
+      reason: "FORBIDDEN" as const,
+    };
+  }
 
   if (
-    !mongoose.Types.ObjectId.isValid(productId)
+    !mongoose.Types.ObjectId.isValid(
+      productId
+    )
   ) {
     return {
       success: false as const,
+      reason: "NOT_FOUND" as const,
     };
   }
 
@@ -37,7 +51,14 @@ export async function archiveProduct(
       }
     );
 
+  if (!product) {
+    return {
+      success: false as const,
+      reason: "NOT_FOUND" as const,
+    };
+  }
+
   return {
-    success: Boolean(product),
+    success: true as const,
   };
 }

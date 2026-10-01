@@ -21,11 +21,24 @@ type UpdateProductData = {
 export async function updateProduct(
   data: UpdateProductData
 ) {
-  const { organizationId, userId } =
-    await getTenantContext();
+  const {
+    organizationId,
+    userId,
+    role,
+  } = await getTenantContext();
+
+  // Only ADMIN may edit products.
+  if (role !== "ADMIN") {
+    return {
+      success: false as const,
+      reason: "FORBIDDEN" as const,
+    };
+  }
 
   if (
-    !mongoose.Types.ObjectId.isValid(data.productId)
+    !mongoose.Types.ObjectId.isValid(
+      data.productId
+    )
   ) {
     return {
       success: false as const,
@@ -49,9 +62,12 @@ export async function updateProduct(
             sku: data.sku,
             category: data.category,
             description: data.description,
-            purchasePrice: data.purchasePrice,
-            sellingPrice: data.sellingPrice,
-            stockQuantity: data.stockQuantity,
+            purchasePrice:
+              data.purchasePrice,
+            sellingPrice:
+              data.sellingPrice,
+            stockQuantity:
+              data.stockQuantity,
             lowStockThreshold:
               data.lowStockThreshold,
             updatedBy: userId,
@@ -77,8 +93,11 @@ export async function updateProduct(
     if (
       error instanceof Error &&
       "code" in error &&
-      (error as Error & { code?: number })
-        .code === 11000
+      (
+        error as Error & {
+          code?: number;
+        }
+      ).code === 11000
     ) {
       return {
         success: false as const,
