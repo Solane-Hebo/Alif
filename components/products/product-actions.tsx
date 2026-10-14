@@ -1,6 +1,11 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import {
+  useActionState,
+  useEffect,
+  useState,
+} from "react";
+
 import {
   Archive,
   Loader2,
@@ -44,6 +49,7 @@ type ProductActionsProps = {
     id: string;
     name: string;
     sku: string;
+    barcode: string;
     category: string;
     description: string;
     purchasePrice: number;
@@ -62,7 +68,8 @@ function minorUnitsToInput(amount: number) {
 export function ProductActions({
   product,
 }: ProductActionsProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] =
+    useState(false);
 
   const [state, formAction, pending] =
     useActionState(
@@ -70,6 +77,99 @@ export function ProductActions({
       initialState
     );
 
+  /*
+   * Controlled fields are intentional.
+   * Base UI can otherwise warn when defaultValue
+   * changes after FieldControl initialization.
+   */
+  const [name, setName] =
+    useState(product.name);
+
+  const [sku, setSku] =
+    useState(product.sku);
+
+  const [barcode, setBarcode] =
+    useState(product.barcode ?? "");
+
+  const [category, setCategory] =
+    useState(product.category);
+
+  const [description, setDescription] =
+    useState(product.description);
+
+  const [
+    purchasePrice,
+    setPurchasePrice,
+  ] = useState(
+    minorUnitsToInput(
+      product.purchasePrice
+    )
+  );
+
+  const [
+    sellingPrice,
+    setSellingPrice,
+  ] = useState(
+    minorUnitsToInput(
+      product.sellingPrice
+    )
+  );
+
+  const [
+    lowStockThreshold,
+    setLowStockThreshold,
+  ] = useState(
+    product.lowStockThreshold.toString()
+  );
+
+  /*
+   * Reset the form to the latest product
+   * values whenever the dialog opens.
+   */
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    setName(product.name);
+    setSku(product.sku);
+    setBarcode(product.barcode ?? "");
+    setCategory(product.category);
+    setDescription(
+      product.description
+    );
+
+    setPurchasePrice(
+      minorUnitsToInput(
+        product.purchasePrice
+      )
+    );
+
+    setSellingPrice(
+      minorUnitsToInput(
+        product.sellingPrice
+      )
+    );
+
+    setLowStockThreshold(
+      product.lowStockThreshold.toString()
+    );
+  }, [
+    open,
+    product.name,
+    product.sku,
+    product.barcode,
+    product.category,
+    product.description,
+    product.purchasePrice,
+    product.sellingPrice,
+    product.lowStockThreshold,
+  ]);
+
+  /*
+   * Close the dialog after a successful
+   * server action.
+   */
   useEffect(() => {
     if (state.success) {
       setOpen(false);
@@ -78,25 +178,26 @@ export function ProductActions({
 
   return (
     <div className="flex justify-end gap-2">
+      {/* Edit product */}
       <Dialog
         open={open}
         onOpenChange={setOpen}
       >
         <DialogTrigger
-  render={
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-    />
-  }
->
-  <Pencil
-    className="mr-2 h-4 w-4"
-    aria-hidden="true"
-  />
-  Edit
-</DialogTrigger>
+          render={
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+            />
+          }
+        >
+          <Pencil
+            className="mr-2 h-4 w-4"
+            aria-hidden="true"
+          />
+          Edit
+        </DialogTrigger>
 
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
@@ -105,8 +206,10 @@ export function ProductActions({
             </DialogTitle>
 
             <DialogDescription>
-              Update product information, prices and
-              stock.
+              Update product information and
+              prices. Stock receiving and
+              adjustments will be managed
+              separately.
             </DialogDescription>
           </DialogHeader>
 
@@ -121,6 +224,7 @@ export function ProductActions({
             />
 
             <div className="grid gap-5 sm:grid-cols-2">
+              {/* Product name */}
               <div className="space-y-2">
                 <label
                   htmlFor={`name-${product.id}`}
@@ -132,13 +236,19 @@ export function ProductActions({
                 <Input
                   id={`name-${product.id}`}
                   name="name"
-                  defaultValue={product.name}
+                  value={name}
+                  onChange={(event) =>
+                    setName(
+                      event.target.value
+                    )
+                  }
                   required
                   maxLength={150}
                   disabled={pending}
                 />
               </div>
 
+              {/* SKU */}
               <div className="space-y-2">
                 <label
                   htmlFor={`sku-${product.id}`}
@@ -150,13 +260,51 @@ export function ProductActions({
                 <Input
                   id={`sku-${product.id}`}
                   name="sku"
-                  defaultValue={product.sku}
+                  value={sku}
+                  onChange={(event) =>
+                    setSku(
+                      event.target.value
+                    )
+                  }
                   required
                   maxLength={80}
                   disabled={pending}
                 />
               </div>
 
+              {/* Barcode */}
+              <div className="space-y-2">
+                <label
+                  htmlFor={`barcode-${product.id}`}
+                  className="text-sm font-medium"
+                >
+                  Barcode
+                </label>
+
+                <Input
+                  id={`barcode-${product.id}`}
+                  name="barcode"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  maxLength={64}
+                  value={barcode}
+                  onChange={(event) =>
+                    setBarcode(
+                      event.target.value
+                    )
+                  }
+                  disabled={pending}
+                  placeholder="Scan or enter barcode"
+                />
+
+                <p className="text-xs text-muted-foreground">
+                  Scan the barcode or enter it
+                  manually.
+                </p>
+              </div>
+
+              {/* Category */}
               <div className="space-y-2">
                 <label
                   htmlFor={`category-${product.id}`}
@@ -168,12 +316,18 @@ export function ProductActions({
                 <Input
                   id={`category-${product.id}`}
                   name="category"
-                  defaultValue={product.category}
+                  value={category}
+                  onChange={(event) =>
+                    setCategory(
+                      event.target.value
+                    )
+                  }
                   maxLength={100}
                   disabled={pending}
                 />
               </div>
 
+              {/* Purchase price */}
               <div className="space-y-2">
                 <label
                   htmlFor={`purchase-${product.id}`}
@@ -186,14 +340,18 @@ export function ProductActions({
                   id={`purchase-${product.id}`}
                   name="purchasePrice"
                   inputMode="decimal"
-                  defaultValue={minorUnitsToInput(
-                    product.purchasePrice
-                  )}
+                  value={purchasePrice}
+                  onChange={(event) =>
+                    setPurchasePrice(
+                      event.target.value
+                    )
+                  }
                   required
                   disabled={pending}
                 />
               </div>
 
+              {/* Selling price */}
               <div className="space-y-2">
                 <label
                   htmlFor={`selling-${product.id}`}
@@ -206,36 +364,18 @@ export function ProductActions({
                   id={`selling-${product.id}`}
                   name="sellingPrice"
                   inputMode="decimal"
-                  defaultValue={minorUnitsToInput(
-                    product.sellingPrice
-                  )}
-                  required
-                  disabled={pending}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label
-                  htmlFor={`stock-${product.id}`}
-                  className="text-sm font-medium"
-                >
-                  Stock quantity
-                </label>
-
-                <Input
-                  id={`stock-${product.id}`}
-                  name="stockQuantity"
-                  type="number"
-                  min={0}
-                  step={1}
-                  defaultValue={
-                    product.stockQuantity
+                  value={sellingPrice}
+                  onChange={(event) =>
+                    setSellingPrice(
+                      event.target.value
+                    )
                   }
                   required
                   disabled={pending}
                 />
               </div>
 
+              {/* Low stock threshold */}
               <div className="space-y-2">
                 <label
                   htmlFor={`threshold-${product.id}`}
@@ -250,8 +390,11 @@ export function ProductActions({
                   type="number"
                   min={0}
                   step={1}
-                  defaultValue={
-                    product.lowStockThreshold
+                  value={lowStockThreshold}
+                  onChange={(event) =>
+                    setLowStockThreshold(
+                      event.target.value
+                    )
                   }
                   required
                   disabled={pending}
@@ -259,6 +402,7 @@ export function ProductActions({
               </div>
             </div>
 
+            {/* Description */}
             <div className="space-y-2">
               <label
                 htmlFor={`description-${product.id}`}
@@ -272,7 +416,12 @@ export function ProductActions({
                 name="description"
                 rows={4}
                 maxLength={1000}
-                defaultValue={product.description}
+                value={description}
+                onChange={(event) =>
+                  setDescription(
+                    event.target.value
+                  )
+                }
                 disabled={pending}
                 className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
               />
@@ -316,23 +465,24 @@ export function ProductActions({
         </DialogContent>
       </Dialog>
 
+      {/* Archive product */}
       <AlertDialog>
         <AlertDialogTrigger
-  render={
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      className="text-red-700 hover:text-red-800"
-    />
-  }
->
-  <Archive
-    className="mr-2 h-4 w-4"
-    aria-hidden="true"
-  />
-  Archive
-</AlertDialogTrigger>
+          render={
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="text-red-700 hover:text-red-800"
+            />
+          }
+        >
+          <Archive
+            className="mr-2 h-4 w-4"
+            aria-hidden="true"
+          />
+          Archive
+        </AlertDialogTrigger>
 
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -341,9 +491,9 @@ export function ProductActions({
             </AlertDialogTitle>
 
             <AlertDialogDescription>
-              The product will no longer appear in
-              the active product list. Historical
-              data will be preserved.
+              The product will no longer appear
+              in the active product list.
+              Historical data will be preserved.
             </AlertDialogDescription>
           </AlertDialogHeader>
 
@@ -352,7 +502,9 @@ export function ProductActions({
               Cancel
             </AlertDialogCancel>
 
-            <form action={archiveProductAction}>
+            <form
+              action={archiveProductAction}
+            >
               <input
                 type="hidden"
                 name="productId"

@@ -1,12 +1,16 @@
 import "server-only";
 
+import mongoose from "mongoose";
+
 import { connectToDatabase } from "@/lib/db/mongoose";
 import { getTenantContext } from "@/lib/auth/tenant";
 import { Product } from "@/lib/models/product.model";
+import { StockMovement } from "@/lib/models/stock-movement.model";
 
 type CreateProductData = {
   name: string;
   sku: string;
+  barcode: string;
   category: string;
   description: string;
   purchasePrice: number;
@@ -23,60 +27,201 @@ export async function createProduct(
 
   await connectToDatabase();
 
-  const existingProduct = await Product.exists({
+  const barcode = data.barcode.trim();
+
+  /*
+   * These checks give the user a better error
+   * message before starting the transaction.
+   *
+   * MongoDB unique indexes remain the final
+   * protection against race conditions.
+   */
+  const existingSku = await Product.exists({
     organizationId,
     sku: data.sku,
   });
 
-  if (existingProduct) {
+  if (existingSku) {
     return {
       success: false as const,
       reason: "SKU_EXISTS" as const,
     };
   }
 
+  if (barcode) {
+    const existingBarcode =
+      await Product.exists({
+        organizationId,
+        barcode,
+      });
+
+    if (existingBarcode) {
+      return {
+        success: false as const,
+        reason: "BARCODE_EXISTS" as const,
+      };
+    }
+  }
+
+  const session =
+    await mongoose.startSession();
+
   try {
-    const product = await Product.create({
-      organizationId,
+    let productId = "";
 
-      name: data.name,
-      sku: data.sku,
-      category: data.category,
-      description: data.description,
+    await session.withTransaction(
+      async () => {
+        /*
+         * Product.create() receives an array so
+         * the MongoDB session can be supplied.
+         */
+        const [product] =
+          await Product.create(
+            [
+              {
+                organizationId,
 
-      purchasePrice: data.purchasePrice,
-      sellingPrice: data.sellingPrice,
+                name: data.name,
+                sku: data.sku,
+                barcode,
 
-      stockQuantity: data.stockQuantity,
-      lowStockThreshold: data.lowStockThreshold,
+                category: data.category,
+                description:
+                  data.description,
 
-      isActive: true,
+                purchasePrice:
+                  data.purchasePrice,
 
-      createdBy: userId,
-      updatedBy: userId,
-    });
+                sellingPrice:
+                  data.sellingPrice,
+
+                stockQuantity:
+                  data.stockQuantity,
+
+                lowStockThreshold:
+                  data.lowStockThreshold,
+
+                isActive: true,
+
+                createdBy: userId,
+                updatedBy: userId,
+              },
+            ],
+            {
+              session,
+            }
+          );
+
+        productId =
+          product._id.toString();
+
+        /*
+         * If the product starts with stock,
+         * create the corresponding audit entry.
+         *
+         * We do not need a zero-value movement
+         * when initial stock is 0.
+         */
+        if (data.stockQuantity > 0) {
+          await StockMovement.create(
+            [
+              {
+                organizationId,
+
+                productId: product._id,
+
+                productName:
+                  product.name,
+
+                productSku:
+                  product.sku,
+
+                productBarcode:
+                  product.barcode ?? "",
+
+                type: "INITIAL",
+
+                quantityChange:
+                  data.stockQuantity,
+
+                stockBefore: 0,
+
+                stockAfter:
+                  data.stockQuantity,
+
+                performedBy: userId,
+
+                note:
+                  "Initial stock when product was created.",
+              },
+            ],
+            {
+              session,
+            }
+          );
+        }
+      }
+    );
 
     return {
       success: true as const,
-      productId: product._id.toString(),
+      productId,
     };
   } catch (error) {
     /*
-     * MongoDB duplicate-key protection.
-     * This also handles two simultaneous requests
-     * attempting to create the same SKU.
+     * Unique indexes are the final protection
+     * against simultaneous duplicate creation.
      */
     if (
       error instanceof Error &&
       "code" in error &&
-      (error as Error & { code?: number }).code === 11000
+      (
+        error as Error & {
+          code?: number;
+          keyPattern?: Record<
+            string,
+            number
+          >;
+        }
+      ).code === 11000
     ) {
+      const duplicateError =
+        error as Error & {
+          code?: number;
+          keyPattern?: Record<
+            string,
+            number
+          >;
+        };
+
+      if (
+        duplicateError.keyPattern?.barcode
+      ) {
+        return {
+          success: false as const,
+          reason:
+            "BARCODE_EXISTS" as const,
+        };
+      }
+
+      if (
+        duplicateError.keyPattern?.sku
+      ) {
+        return {
+          success: false as const,
+          reason: "SKU_EXISTS" as const,
+        };
+      }
+
       return {
         success: false as const,
-        reason: "SKU_EXISTS" as const,
+        reason:
+          "DUPLICATE_PRODUCT" as const,
       };
     }
 
     throw error;
+  } finally {
+    await session.endSession();
   }
 }

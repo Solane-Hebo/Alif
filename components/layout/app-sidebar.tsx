@@ -28,7 +28,7 @@ const navigation = [
     name: "Sales",
     icon: ShoppingCart,
     href: "/sales",
-    enabled: false,
+    enabled: true,
   },
   {
     name: "Products",
@@ -40,7 +40,7 @@ const navigation = [
     name: "Inventory",
     icon: Boxes,
     href: "/inventory",
-    enabled: false,
+    enabled: true,
   },
   {
     name: "Users",

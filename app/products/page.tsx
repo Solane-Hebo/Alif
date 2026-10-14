@@ -3,9 +3,12 @@ import Link from "next/link";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { ProductActions } from "@/components/products/product-actions";
 import { ProductForm } from "@/components/products/product-form";
-import { Card, CardContent } from "@/components/ui/card";
-import { requireUser } from "@/lib/auth/guards";
+import {
+  Card,
+  CardContent,
+} from "@/components/ui/card";
 
+import { requireUser } from "@/lib/auth/guards";
 import { getProducts } from "@/lib/services/products/get-products";
 import { formatMoney } from "@/lib/utils/money";
 
@@ -47,6 +50,8 @@ export default async function ProductsPage({
     stock,
   });
 
+  const isAdmin = user.role === "ADMIN";
+
   const hasFilters =
     Boolean(search) ||
     Boolean(category) ||
@@ -62,7 +67,8 @@ export default async function ProductsPage({
           </h1>
 
           <p className="mt-1 text-sm text-slate-500">
-            Manage your products, prices and stock.
+            Manage your products, prices and
+            stock.
           </p>
         </div>
 
@@ -73,7 +79,9 @@ export default async function ProductsPage({
               Add product
             </h2>
 
-            <ProductForm />
+            <ProductForm
+  isAdmin={isAdmin}
+/>
           </CardContent>
         </Card>
 
@@ -120,7 +128,7 @@ export default async function ProductsPage({
                   name="q"
                   type="search"
                   defaultValue={search}
-                  placeholder="Search name or SKU..."
+                  placeholder="Search name, SKU or barcode..."
                   className="h-9 w-full min-w-0 rounded-md border border-input bg-white px-3 text-sm shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 />
               </div>
@@ -177,7 +185,6 @@ export default async function ProductsPage({
                 </select>
               </div>
 
-              {/* Search button */}
               <button
                 type="submit"
                 className="inline-flex h-9 items-center justify-center rounded-md bg-emerald-600 px-4 text-sm font-medium text-white transition-colors hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
@@ -185,7 +192,6 @@ export default async function ProductsPage({
                 Search
               </button>
 
-              {/* Clear filters */}
               <Link
                 href="/products"
                 className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
@@ -195,9 +201,8 @@ export default async function ProductsPage({
             </form>
           </div>
 
-          {/* Products table */}
           {/* Desktop products table */}
-         <div className="hidden overflow-x-auto rounded-xl border bg-white md:block">
+          <div className="hidden overflow-x-auto rounded-xl border bg-white md:block">
             <table className="w-full text-left text-sm">
               <thead className="border-b bg-slate-50">
                 <tr>
@@ -219,15 +224,25 @@ export default async function ProductsPage({
                     scope="col"
                     className="px-4 py-3 font-semibold"
                   >
-                    Category
+                    Barcode
                   </th>
 
                   <th
                     scope="col"
-                    className="px-4 py-3 text-right font-semibold"
+                    className="px-4 py-3 font-semibold"
                   >
-                    Purchase
+                    Category
                   </th>
+
+                  {/* ADMIN financial data */}
+                  {isAdmin ? (
+                    <th
+                      scope="col"
+                      className="px-4 py-3 text-right font-semibold"
+                    >
+                      Purchase
+                    </th>
+                  ) : null}
 
                   <th
                     scope="col"
@@ -255,40 +270,43 @@ export default async function ProductsPage({
               <tbody className="divide-y">
                 {products.map((product) => (
                   <tr key={product.id}>
-                    {/* Product */}
                     <td className="px-4 py-3 font-medium text-slate-900">
                       {product.name}
                     </td>
 
-                    {/* SKU */}
                     <td className="px-4 py-3 text-slate-600">
                       {product.sku}
                     </td>
 
-                    {/* Category */}
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                      {product.barcode || "—"}
+                    </td>
+
                     <td className="px-4 py-3 text-slate-600">
                       {product.category || "—"}
                     </td>
 
-                    {/* Purchase price */}
-                    <td className="whitespace-nowrap px-4 py-3 text-right">
-                      {formatMoney(
-                        product.purchasePrice
-                      )}
-                    </td>
+                    {/* ADMIN financial data */}
+                    {isAdmin ? (
+                      <td className="whitespace-nowrap px-4 py-3 text-right">
+                        {formatMoney(
+                          product.purchasePrice!
+                        )}
+                      </td>
+                    ) : null}
 
-                    {/* Selling price */}
                     <td className="whitespace-nowrap px-4 py-3 text-right">
                       {formatMoney(
                         product.sellingPrice
                       )}
                     </td>
 
-                    {/* Stock */}
                     <td className="px-4 py-3 text-right">
                       <div className="flex flex-col items-end gap-1">
                         <span className="font-medium">
-                          {product.stockQuantity}
+                          {
+                            product.stockQuantity
+                          }
                         </span>
 
                         {product.stockQuantity ===
@@ -309,26 +327,31 @@ export default async function ProductsPage({
                       </div>
                     </td>
 
-                    {/* Actions */}
-                    <td className="px-4 py-3">
-                     {user.role === "ADMIN" ? (
-  <ProductActions
-    product={product}
-  />
-) : (
-  <span className="text-xs text-slate-400">
-    —
-  </span>
-)}
-                    </td>
+                   <td className="px-4 py-3">
+  {isAdmin &&
+  product.purchasePrice !== undefined ? (
+    <ProductActions
+      product={{
+        ...product,
+        purchasePrice:
+          product.purchasePrice,
+      }}
+    />
+  ) : (
+    <span className="text-xs text-slate-400">
+      —
+    </span>
+  )}
+</td>
                   </tr>
                 ))}
 
-                {/* Empty state */}
                 {products.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={
+                        isAdmin ? 8 : 7
+                      }
                       className="px-4 py-10 text-center text-slate-500"
                     >
                       {hasFilters
@@ -340,94 +363,124 @@ export default async function ProductsPage({
               </tbody>
             </table>
           </div>
+
           {/* Mobile product cards */}
-<div className="grid gap-3 md:hidden">
-  {products.map((product) => (
-    <article
-      key={product.id}
-      className="rounded-xl border bg-white p-4 shadow-sm"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="truncate font-semibold text-slate-900">
-            {product.name}
-          </h3>
+          <div className="grid gap-3 md:hidden">
+            {products.map((product) => (
+              <article
+                key={product.id}
+                className="rounded-xl border bg-white p-4 shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="truncate font-semibold text-slate-900">
+                      {product.name}
+                    </h3>
 
-          <p className="mt-1 text-xs text-slate-500">
-            SKU: {product.sku}
-          </p>
-        </div>
+                    <p className="mt-1 text-xs text-slate-500">
+                      SKU: {product.sku}
+                    </p>
 
-        {product.stockQuantity === 0 ? (
-          <span className="shrink-0 rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-700">
-            Out of stock
-          </span>
-        ) : product.stockQuantity <=
-          product.lowStockThreshold ? (
-          <span className="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
-            Low stock
-          </span>
-        ) : (
-          <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">
-            In stock
-          </span>
-        )}
-      </div>
+                    {product.barcode ? (
+                      <p className="mt-1 break-all text-xs text-slate-500">
+                        Barcode:{" "}
+                        {product.barcode}
+                      </p>
+                    ) : null}
+                  </div>
 
-      <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-        <div>
-          <dt className="text-xs text-slate-500">
-            Category
-          </dt>
-          <dd className="mt-1 font-medium text-slate-800">
-            {product.category || "—"}
-          </dd>
-        </div>
+                  {product.stockQuantity ===
+                  0 ? (
+                    <span className="shrink-0 rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-700">
+                      Out of stock
+                    </span>
+                  ) : product.stockQuantity <=
+                    product.lowStockThreshold ? (
+                    <span className="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
+                      Low stock
+                    </span>
+                  ) : (
+                    <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">
+                      In stock
+                    </span>
+                  )}
+                </div>
 
-        <div>
-          <dt className="text-xs text-slate-500">
-            Stock
-          </dt>
-          <dd className="mt-1 font-medium text-slate-800">
-            {product.stockQuantity}
-          </dd>
-        </div>
+                <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                  <div>
+                    <dt className="text-xs text-slate-500">
+                      Category
+                    </dt>
 
-        <div>
-          <dt className="text-xs text-slate-500">
-            Purchase
-          </dt>
-          <dd className="mt-1 font-medium text-slate-800">
-            {formatMoney(product.purchasePrice)}
-          </dd>
-        </div>
+                    <dd className="mt-1 font-medium text-slate-800">
+                      {product.category ||
+                        "—"}
+                    </dd>
+                  </div>
 
-        <div>
-          <dt className="text-xs text-slate-500">
-            Selling
-          </dt>
-          <dd className="mt-1 font-medium text-slate-800">
-            {formatMoney(product.sellingPrice)}
-          </dd>
-        </div>
-      </dl>
+                  <div>
+                    <dt className="text-xs text-slate-500">
+                      Stock
+                    </dt>
 
-      {user.role === "ADMIN" ? (
+                    <dd className="mt-1 font-medium text-slate-800">
+                      {
+                        product.stockQuantity
+                      }
+                    </dd>
+                  </div>
+
+                  {/* ADMIN financial data */}
+                  {isAdmin ? (
+                    <div>
+                      <dt className="text-xs text-slate-500">
+                        Purchase
+                      </dt>
+
+                      <dd className="mt-1 font-medium text-slate-800">
+                        {formatMoney(
+                          product.purchasePrice!
+                        )}
+                      </dd>
+                    </div>
+                  ) : null}
+
+                  <div>
+                    <dt className="text-xs text-slate-500">
+                      Selling
+                    </dt>
+
+                    <dd className="mt-1 font-medium text-slate-800">
+                      {formatMoney(
+                        product.sellingPrice
+                      )}
+                    </dd>
+                  </div>
+                </dl>
+
+               {isAdmin &&
+product.purchasePrice !== undefined ? (
   <div className="mt-4 border-t pt-3">
-    <ProductActions product={product} />
+    <ProductActions
+      product={{
+        ...product,
+        purchasePrice:
+          product.purchasePrice,
+      }}
+    />
   </div>
 ) : null}
-    </article>
-  ))}
+              </article>
+            ))}
 
-  {products.length === 0 ? (
-    <div className="rounded-xl border bg-white px-4 py-10 text-center text-sm text-slate-500">
-      {hasFilters
-        ? "No products match the selected filters."
-        : "No products yet. Add your first product above."}
-    </div>
-  ) : null}
-</div>
+            {products.length === 0 ? (
+              <div className="rounded-xl border bg-white px-4 py-10 text-center text-sm text-slate-500">
+                {hasFilters
+                  ? "No products match the selected filters."
+                  : "No products yet. Add your first product above."}
+              </div>
+            ) : null}
+          </div>
         </section>
       </div>
     </DashboardLayout>

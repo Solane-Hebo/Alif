@@ -30,6 +30,12 @@ const productSchema = new Schema(
       maxlength: 80,
     },
 
+  barcode: {
+   type: String,
+   trim: true,
+   default: "",
+  },
+
     category: {
       type: String,
       trim: true,
@@ -125,6 +131,16 @@ productSchema.index({
   isActive: 1,
   createdAt: -1,
 });
+
+productSchema.index(
+  { organizationId: 1, barcode: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      barcode: { $type: "string", $gt: "" },
+    },
+  }
+);
 
 export type ProductDocument = InferSchemaType<
   typeof productSchema

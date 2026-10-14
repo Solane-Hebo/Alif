@@ -16,12 +16,19 @@ import {
   type CreateProductState,
 } from "@/app/products/actions";
 
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 const initialState: CreateProductState = {};
 
-export function ProductForm() {
+type ProductFormProps = {
+  isAdmin: boolean;
+};
+
+export function ProductForm({
+  isAdmin,
+}: ProductFormProps) {
   const formRef =
     useRef<HTMLFormElement>(null);
 
@@ -82,6 +89,31 @@ export function ProductForm() {
 
         <div className="space-y-2">
           <label
+            htmlFor="barcode"
+            className="text-sm font-medium text-slate-700"
+          >
+            Barcode
+          </label>
+
+          <Input
+            id="barcode"
+            name="barcode"
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            maxLength={64}
+            disabled={pending}
+            placeholder="Scan or enter barcode"
+          />
+
+          <p className="text-sm text-muted-foreground">
+            Scan the barcode or enter it
+            manually.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <label
             htmlFor="category"
             className="text-sm font-medium text-slate-700"
           >
@@ -97,23 +129,25 @@ export function ProductForm() {
           />
         </div>
 
-        <div className="space-y-2">
-          <label
-            htmlFor="purchasePrice"
-            className="text-sm font-medium text-slate-700"
-          >
-            Purchase price
-          </label>
+        {isAdmin ? (
+          <div className="space-y-2">
+            <label
+              htmlFor="purchasePrice"
+              className="text-sm font-medium text-slate-700"
+            >
+              Purchase price
+            </label>
 
-          <Input
-            id="purchasePrice"
-            name="purchasePrice"
-            inputMode="decimal"
-            required
-            disabled={pending}
-            placeholder="79,90"
-          />
-        </div>
+            <Input
+              id="purchasePrice"
+              name="purchasePrice"
+              inputMode="decimal"
+              required
+              disabled={pending}
+              placeholder="79,90"
+            />
+          </div>
+        ) : null}
 
         <div className="space-y-2">
           <label

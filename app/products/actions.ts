@@ -25,21 +25,27 @@ export async function createProductAction(
   _previousState: CreateProductState,
   formData: FormData
 ): Promise<CreateProductState> {
-  const parsed = createProductSchema.safeParse({
-    name: formData.get("name"),
-    sku: formData.get("sku"),
-    category: formData.get("category") ?? "",
-    description:
-      formData.get("description") ?? "",
-    purchasePrice:
-      formData.get("purchasePrice"),
-    sellingPrice:
-      formData.get("sellingPrice"),
-    stockQuantity:
-      formData.get("stockQuantity"),
-    lowStockThreshold:
-      formData.get("lowStockThreshold"),
-  });
+  const parsed =
+    createProductSchema.safeParse({
+      name: formData.get("name"),
+      sku: formData.get("sku"),
+      barcode:
+        formData.get("barcode") ?? "",
+      category:
+        formData.get("category") ?? "",
+      description:
+        formData.get("description") ?? "",
+      purchasePrice:
+        formData.get("purchasePrice"),
+      sellingPrice:
+        formData.get("sellingPrice"),
+      stockQuantity:
+        formData.get("stockQuantity"),
+      lowStockThreshold:
+        formData.get(
+          "lowStockThreshold"
+        ),
+    });
 
   if (!parsed.success) {
     return {
@@ -49,17 +55,47 @@ export async function createProductAction(
     };
   }
 
-  const result =
-    await createProduct(parsed.data);
+  const result = await createProduct(
+    parsed.data
+  );
 
   if (!result.success) {
+    if (result.reason === "SKU_EXISTS") {
+      return {
+        error:
+          "A product with this SKU already exists.",
+      };
+    }
+
+    if (
+      result.reason === "BARCODE_EXISTS"
+    ) {
+      return {
+        error:
+          "A product with this barcode already exists.",
+      };
+    }
+
+    if (
+      result.reason ===
+      "DUPLICATE_PRODUCT"
+    ) {
+      return {
+        error:
+          "A product with this SKU or barcode already exists.",
+      };
+    }
+
     return {
       error:
-        "A product with this SKU already exists.",
+        "The product could not be created.",
     };
   }
 
   revalidatePath("/products");
+  revalidatePath("/inventory");
+  revalidatePath("/sales");
+  revalidatePath("/");
 
   return {
     success: true,
@@ -70,22 +106,41 @@ export async function updateProductAction(
   _previousState: UpdateProductState,
   formData: FormData
 ): Promise<UpdateProductState> {
-  const parsed = updateProductSchema.safeParse({
-    productId: formData.get("productId"),
-    name: formData.get("name"),
-    sku: formData.get("sku"),
-    category: formData.get("category") ?? "",
-    description:
-      formData.get("description") ?? "",
-    purchasePrice:
-      formData.get("purchasePrice"),
-    sellingPrice:
-      formData.get("sellingPrice"),
-    stockQuantity:
-      formData.get("stockQuantity"),
-    lowStockThreshold:
-      formData.get("lowStockThreshold"),
-  });
+  /*
+   * Notice that stockQuantity is intentionally
+   * NOT read from FormData here.
+   */
+  const parsed =
+    updateProductSchema.safeParse({
+      productId:
+        formData.get("productId"),
+
+      name:
+        formData.get("name"),
+
+      sku:
+        formData.get("sku"),
+
+      barcode:
+        formData.get("barcode") ?? "",
+
+      category:
+        formData.get("category") ?? "",
+
+      description:
+        formData.get("description") ?? "",
+
+      purchasePrice:
+        formData.get("purchasePrice"),
+
+      sellingPrice:
+        formData.get("sellingPrice"),
+
+      lowStockThreshold:
+        formData.get(
+          "lowStockThreshold"
+        ),
+    });
 
   if (!parsed.success) {
     return {
@@ -95,14 +150,34 @@ export async function updateProductAction(
     };
   }
 
-  const result =
-    await updateProduct(parsed.data);
+  const result = await updateProduct(
+    parsed.data
+  );
 
   if (!result.success) {
     if (result.reason === "SKU_EXISTS") {
       return {
         error:
           "A product with this SKU already exists.",
+      };
+    }
+
+    if (
+      result.reason === "BARCODE_EXISTS"
+    ) {
+      return {
+        error:
+          "A product with this barcode already exists.",
+      };
+    }
+
+    if (
+      result.reason ===
+      "DUPLICATE_PRODUCT"
+    ) {
+      return {
+        error:
+          "A product with this SKU or barcode already exists.",
       };
     }
 
@@ -120,6 +195,9 @@ export async function updateProductAction(
   }
 
   revalidatePath("/products");
+  revalidatePath("/inventory");
+  revalidatePath("/sales");
+  revalidatePath("/");
 
   return {
     success: true,
@@ -142,4 +220,7 @@ export async function archiveProductAction(
   await archiveProduct(productId);
 
   revalidatePath("/products");
+  revalidatePath("/inventory");
+  revalidatePath("/sales");
+  revalidatePath("/");
 }

@@ -10,11 +10,11 @@ type UpdateProductData = {
   productId: string;
   name: string;
   sku: string;
+  barcode: string;
   category: string;
   description: string;
   purchasePrice: number;
   sellingPrice: number;
-  stockQuantity: number;
   lowStockThreshold: number;
 };
 
@@ -27,7 +27,10 @@ export async function updateProduct(
     role,
   } = await getTenantContext();
 
-  // Only ADMIN may edit products.
+  /*
+   * STAFF may create products, but only
+   * ADMIN may edit existing products.
+   */
   if (role !== "ADMIN") {
     return {
       success: false as const,
@@ -48,6 +51,51 @@ export async function updateProduct(
 
   await connectToDatabase();
 
+  const barcode = data.barcode.trim();
+
+  /*
+   * SKU must be unique inside the current
+   * organization.
+   */
+  const existingSku =
+    await Product.exists({
+      _id: {
+        $ne: data.productId,
+      },
+      organizationId,
+      sku: data.sku,
+    });
+
+  if (existingSku) {
+    return {
+      success: false as const,
+      reason: "SKU_EXISTS" as const,
+    };
+  }
+
+  /*
+   * Barcode is optional, but when present
+   * it must be unique inside the tenant.
+   */
+  if (barcode) {
+    const existingBarcode =
+      await Product.exists({
+        _id: {
+          $ne: data.productId,
+        },
+        organizationId,
+        barcode,
+      });
+
+    if (existingBarcode) {
+      return {
+        success: false as const,
+        reason:
+          "BARCODE_EXISTS" as const,
+      };
+    }
+  }
+
   try {
     const product =
       await Product.findOneAndUpdate(
@@ -60,21 +108,25 @@ export async function updateProduct(
           $set: {
             name: data.name,
             sku: data.sku,
+            barcode,
             category: data.category,
-            description: data.description,
+            description:
+              data.description,
+
             purchasePrice:
               data.purchasePrice,
+
             sellingPrice:
               data.sellingPrice,
-            stockQuantity:
-              data.stockQuantity,
+
             lowStockThreshold:
               data.lowStockThreshold,
+
             updatedBy: userId,
           },
         },
         {
-          new: true,
+          returnDocument: "after",
           runValidators: true,
         }
       );
@@ -90,18 +142,57 @@ export async function updateProduct(
       success: true as const,
     };
   } catch (error) {
+    /*
+     * Unique MongoDB indexes remain the
+     * final protection against race
+     * conditions.
+     */
     if (
       error instanceof Error &&
       "code" in error &&
       (
         error as Error & {
           code?: number;
+          keyPattern?: Record<
+            string,
+            number
+          >;
         }
       ).code === 11000
     ) {
+      const duplicateError =
+        error as Error & {
+          code?: number;
+          keyPattern?: Record<
+            string,
+            number
+          >;
+        };
+
+      if (
+        duplicateError.keyPattern
+          ?.barcode
+      ) {
+        return {
+          success: false as const,
+          reason:
+            "BARCODE_EXISTS" as const,
+        };
+      }
+
+      if (
+        duplicateError.keyPattern?.sku
+      ) {
+        return {
+          success: false as const,
+          reason: "SKU_EXISTS" as const,
+        };
+      }
+
       return {
         success: false as const,
-        reason: "SKU_EXISTS" as const,
+        reason:
+          "DUPLICATE_PRODUCT" as const,
       };
     }
 

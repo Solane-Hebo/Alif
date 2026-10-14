@@ -34,22 +34,39 @@ export const createProductSchema = z.object({
     .trim()
     .min(1, "SKU is required.")
     .max(80, "SKU is too long.")
-    .transform((value) => value.toUpperCase()),
+    .transform((value) =>
+      value.toUpperCase()
+    ),
+
+  barcode: z
+    .string()
+    .trim()
+    .max(64, "Barcode is too long.")
+    .default(""),
 
   category: z
     .string()
     .trim()
-    .max(100, "Category is too long."),
+    .max(100, "Category is too long.")
+    .default(""),
 
   description: z
     .string()
     .trim()
-    .max(1000, "Description is too long."),
+    .max(1000, "Description is too long.")
+    .default(""),
 
   purchasePrice: moneySchema,
 
   sellingPrice: moneySchema,
 
+  /*
+   * Initial stock is allowed when creating
+   * a new product.
+   *
+   * Later we will create an INITIAL
+   * StockMovement for this quantity.
+   */
   stockQuantity: z.coerce
     .number()
     .int("Stock must be a whole number.")
@@ -57,25 +74,79 @@ export const createProductSchema = z.object({
 
   lowStockThreshold: z.coerce
     .number()
-    .int("Low stock threshold must be a whole number.")
+    .int(
+      "Low stock threshold must be a whole number."
+    )
     .min(
       0,
       "Low stock threshold cannot be negative."
     ),
 });
 
-export const updateProductSchema =
-  createProductSchema.extend({
-    productId: z
-      .string()
-      .trim()
-      .min(1, "Product ID is required."),
-  });
+/*
+ * Editing a product intentionally does NOT
+ * include stockQuantity.
+ *
+ * Stock must only change through inventory
+ * operations such as RECEIPT, SALE,
+ * SALE_VOID and future ADJUSTMENT.
+ */
+export const updateProductSchema = z.object({
+  productId: z
+    .string()
+    .trim()
+    .min(1, "Product ID is required."),
 
-export type UpdateProductInput = z.infer<
-  typeof updateProductSchema
->;
+  name: z
+    .string()
+    .trim()
+    .min(1, "Product name is required.")
+    .max(150, "Product name is too long."),
 
-export type CreateProductInput = z.infer<
-  typeof createProductSchema
->;
+  sku: z
+    .string()
+    .trim()
+    .min(1, "SKU is required.")
+    .max(80, "SKU is too long.")
+    .transform((value) =>
+      value.toUpperCase()
+    ),
+
+  barcode: z
+    .string()
+    .trim()
+    .max(64, "Barcode is too long.")
+    .default(""),
+
+  category: z
+    .string()
+    .trim()
+    .max(100, "Category is too long.")
+    .default(""),
+
+  description: z
+    .string()
+    .trim()
+    .max(1000, "Description is too long.")
+    .default(""),
+
+  purchasePrice: moneySchema,
+
+  sellingPrice: moneySchema,
+
+  lowStockThreshold: z.coerce
+    .number()
+    .int(
+      "Low stock threshold must be a whole number."
+    )
+    .min(
+      0,
+      "Low stock threshold cannot be negative."
+    ),
+});
+
+export type UpdateProductInput =
+  z.infer<typeof updateProductSchema>;
+
+export type CreateProductInput =
+  z.infer<typeof createProductSchema>;

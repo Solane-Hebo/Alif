@@ -17,7 +17,10 @@ type GetProductsOptions = {
 };
 
 function escapeRegex(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return value.replace(
+    /[.*+?^${}()|[\]\\]/g,
+    "\\$&"
+  );
 }
 
 export async function getProducts({
@@ -25,7 +28,7 @@ export async function getProducts({
   category = "",
   stock = "all",
 }: GetProductsOptions = {}) {
-  const { organizationId } =
+  const { organizationId, role } =
     await getTenantContext();
 
   await connectToDatabase();
@@ -55,6 +58,12 @@ export async function getProducts({
           $options: "i",
         },
       },
+      {
+        barcode: {
+          $regex: safeSearch,
+          $options: "i",
+        },
+      },
     ];
   }
 
@@ -72,24 +81,37 @@ export async function getProducts({
     };
   }
 
-  const products = await Product.find(query)
-    .sort({ createdAt: -1 })
-    .lean();
+  const productFields =
+  role === "ADMIN"
+    ? "_id name sku barcode category description purchasePrice sellingPrice stockQuantity lowStockThreshold"
+    : "_id name sku barcode category description sellingPrice stockQuantity lowStockThreshold";
 
-  const serializedProducts = products.map(
-    (product) => ({
-      id: product._id.toString(),
-      name: product.name,
-      sku: product.sku,
-      category: product.category,
-      description: product.description,
-      purchasePrice: product.purchasePrice,
-      sellingPrice: product.sellingPrice,
-      stockQuantity: product.stockQuantity,
-      lowStockThreshold:
-        product.lowStockThreshold,
-    })
-  );
+const products = await Product.find(query)
+  .select(productFields)
+  .sort({ createdAt: -1 })
+  .lean();
+
+ const serializedProducts = products.map(
+  (product) => ({
+    id: product._id.toString(),
+    name: product.name,
+    sku: product.sku,
+    barcode: product.barcode ?? "",
+    category: product.category,
+    description: product.description,
+    sellingPrice: product.sellingPrice,
+    stockQuantity: product.stockQuantity,
+    lowStockThreshold:
+      product.lowStockThreshold,
+
+    ...(role === "ADMIN"
+      ? {
+          purchasePrice:
+            product.purchasePrice,
+        }
+      : {}),
+  })
+);
 
   if (stock === "low-stock") {
     return serializedProducts.filter(
