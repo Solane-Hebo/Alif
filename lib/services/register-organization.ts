@@ -4,7 +4,10 @@ import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 
 import { connectToDatabase } from "@/lib/db/mongoose";
-import { Organization } from "@/lib/models/organization.model";
+import {
+  Organization,
+  type OrganizationCalendar,
+} from "@/lib/models/organization.model";
 import { User } from "@/lib/models/user.model";
 
 type RegisterOrganizationInput = {
@@ -12,6 +15,10 @@ type RegisterOrganizationInput = {
   name: string;
   email: string;
   password: string;
+  currency: string;
+  locale: string;
+  timezone: string;
+  calendar: OrganizationCalendar;
 };
 
 function createSlug(name: string) {
@@ -32,6 +39,51 @@ function createSlug(name: string) {
   return `${base}-${suffix}`;
 }
 
+function isValidCurrency(
+  currency: string
+) {
+  try {
+    new Intl.NumberFormat("en", {
+      style: "currency",
+      currency,
+    });
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function isValidOrganizationFormatting({
+  locale,
+  timezone,
+  calendar,
+}: {
+  locale: string;
+  timezone: string;
+  calendar: OrganizationCalendar;
+}) {
+  try {
+    const resolvedLocale =
+      new Intl.Locale(locale, {
+        calendar,
+      }).toString();
+
+    new Intl.DateTimeFormat(
+      resolvedLocale,
+      {
+        timeZone: timezone,
+        dateStyle: "medium",
+        timeStyle: "short",
+      }
+    ).format(new Date());
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function registerOrganization(
   input: RegisterOrganizationInput
 ) {
@@ -40,6 +92,31 @@ export async function registerOrganization(
   const normalizedEmail = input.email
     .trim()
     .toLowerCase();
+
+  const currency = input.currency
+    .trim()
+    .toUpperCase();
+
+  const locale = input.locale.trim();
+
+  const timezone = input.timezone.trim();
+
+  const calendar = input.calendar;
+
+  if (
+    !isValidCurrency(currency) ||
+    !isValidOrganizationFormatting({
+      locale,
+      timezone,
+      calendar,
+    })
+  ) {
+    return {
+      success: false as const,
+      reason:
+        "INVALID_ORGANIZATION_SETTINGS" as const,
+    };
+  }
 
   const existingUser = await User.exists({
     email: normalizedEmail,
@@ -57,67 +134,86 @@ export async function registerOrganization(
     12
   );
 
-  const session = await mongoose.startSession();
+  const session =
+    await mongoose.startSession();
 
   try {
     let createdOrganizationId = "";
 
-    await session.withTransaction(async () => {
-      // Check again inside the transaction.
-      const duplicateUser = await User.exists({
-        email: normalizedEmail,
-      }).session(session);
-
-      if (duplicateUser) {
-        throw new Error("EMAIL_EXISTS");
-      }
-
-      const organizations = await Organization.create(
-        [
-          {
-            name: input.organizationName.trim(),
-            slug: createSlug(input.organizationName),
-            currency: "SEK",
-            locale: "sv-SE",
-            timezone: "Europe/Stockholm",
-            isActive: true,
-          },
-        ],
-        { session }
-      );
-
-      const organization = organizations[0];
-
-      await User.create(
-        [
-          {
-            organizationId: organization._id,
-            name: input.name.trim(),
+    await session.withTransaction(
+      async () => {
+        /*
+         * Check again inside the transaction.
+         * The unique email index remains the
+         * final database-level protection.
+         */
+        const duplicateUser =
+          await User.exists({
             email: normalizedEmail,
-            passwordHash,
-            role: "ADMIN",
-            isActive: true,
-          },
-        ],
-        { session }
-      );
+          }).session(session);
 
-      createdOrganizationId =
-        organization._id.toString();
-    });
+        if (duplicateUser) {
+          throw new Error(
+            "EMAIL_EXISTS"
+          );
+        }
+
+        const organizations =
+          await Organization.create(
+            [
+              {
+                name: input.organizationName.trim(),
+                slug: createSlug(
+                  input.organizationName
+                ),
+                currency,
+                locale,
+                timezone,
+                calendar,
+                isActive: true,
+              },
+            ],
+            { session }
+          );
+
+        const organization =
+          organizations[0];
+
+        await User.create(
+          [
+            {
+              organizationId:
+                organization._id,
+              name: input.name.trim(),
+              email: normalizedEmail,
+              passwordHash,
+              role: "ADMIN",
+              isActive: true,
+            },
+          ],
+          { session }
+        );
+
+        createdOrganizationId =
+          organization._id.toString();
+      }
+    );
 
     return {
       success: true as const,
-      organizationId: createdOrganizationId,
+      organizationId:
+        createdOrganizationId,
     };
   } catch (error) {
     if (
       error instanceof Error &&
-      error.message === "EMAIL_EXISTS"
+      error.message ===
+        "EMAIL_EXISTS"
     ) {
       return {
         success: false as const,
-        reason: "EMAIL_EXISTS" as const,
+        reason:
+          "EMAIL_EXISTS" as const,
       };
     }
 

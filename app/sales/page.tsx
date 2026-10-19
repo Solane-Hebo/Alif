@@ -8,18 +8,27 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+import { requireUser } from "@/lib/auth/guards";
+import { getOrganizationSettings } from "@/lib/services/organizations/get-organization-settings";
 import { getSaleProducts } from "@/lib/services/sales/get-sale-products";
 import { getSales } from "@/lib/services/sales/get-sales";
-import { requireUser } from "@/lib/auth/guards";
 
 export default async function SalesPage() {
   const user = await requireUser();
 
-  const [products, sales] =
-    await Promise.all([
-      getSaleProducts(),
-      getSales(),
-    ]);
+  const [
+    products,
+    sales,
+    organization,
+  ] = await Promise.all([
+    getSaleProducts(),
+    getSales(),
+    getOrganizationSettings(),
+  ]);
+
+  if (!organization) {
+    return null;
+  }
 
   const canManageSales =
     user.role === "ADMIN";
@@ -47,8 +56,10 @@ export default async function SalesPage() {
 
           <CardContent>
             <SaleForm
-              products={products}
-            />
+  products={products}
+  currency={organization.currency}
+  locale={organization.locale}
+/>
           </CardContent>
         </Card>
 
@@ -65,7 +76,9 @@ export default async function SalesPage() {
             </h2>
 
             <p className="text-sm text-slate-500">
-              {sales.length}{" "}
+              {sales.length.toLocaleString(
+                organization.locale
+              )}{" "}
               {sales.length === 1
                 ? "sale"
                 : "sales"}
@@ -73,9 +86,21 @@ export default async function SalesPage() {
           </div>
 
           <SalesHistory
-          sales={sales}
-          canManageSales={canManageSales}
-/>
+            sales={sales}
+            canManageSales={
+              canManageSales
+            }
+            currency={
+              organization.currency
+            }
+            locale={
+              organization.locale
+            }
+            timezone={
+              organization.timezone
+            }
+              calendar={organization.calendar}
+          />
         </section>
       </div>
     </DashboardLayout>

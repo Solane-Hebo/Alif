@@ -17,6 +17,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+import { formatMoney } from "@/lib/utils/money";
+
 type SaleProduct = {
   id: string;
   name: string;
@@ -27,6 +29,8 @@ type SaleProduct = {
 
 type SaleFormProps = {
   products: SaleProduct[];
+  currency: string;
+  locale: string;
 };
 
 const initialSaleState: RegisterSaleState = {};
@@ -40,6 +44,8 @@ function minorUnitsToInput(amount: number) {
 
 export function SaleForm({
   products,
+  currency,
+  locale,
 }: SaleFormProps) {
   const barcodeInputRef =
     useRef<HTMLInputElement>(null);
@@ -365,9 +371,9 @@ export function SaleForm({
                 </p>
 
                 <p className="mt-1 text-sm font-medium">
-                  {
-                    selectedProduct.stockQuantity
-                  }
+                  {selectedProduct.stockQuantity.toLocaleString(
+                    locale
+                  )}
                 </p>
               </div>
 
@@ -377,8 +383,10 @@ export function SaleForm({
                 </p>
 
                 <p className="mt-1 text-sm font-medium">
-                  {minorUnitsToInput(
-                    selectedProduct.sellingPrice
+                  {formatMoney(
+                    selectedProduct.sellingPrice,
+                    currency,
+                    locale
                   )}
                 </p>
               </div>
@@ -438,8 +446,13 @@ export function SaleForm({
             />
 
             <p className="text-xs text-slate-500">
-              Price per unit. You may change it
-              for this sale.
+              Price per unit in{" "}
+              <span className="font-medium">
+                {currency === "ETB"
+                  ? "Birr"
+                  : currency}
+              </span>
+              . You may change it for this sale.
             </p>
           </div>
         </div>
@@ -460,7 +473,9 @@ export function SaleForm({
             className="rounded-lg bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800"
           >
             Only{" "}
-            {selectedProduct?.stockQuantity}{" "}
+            {selectedProduct?.stockQuantity.toLocaleString(
+              locale
+            )}{" "}
             item(s) are currently available.
           </p>
         ) : null}

@@ -1,3 +1,5 @@
+import { formatDateTime } from "@/lib/utils/date-format";
+
 type StockMovementItem = {
   id: string;
   productName: string;
@@ -13,6 +15,9 @@ type StockMovementItem = {
 
 type Props = {
   movements: StockMovementItem[];
+  locale: string;
+  timezone: string;
+  calendar: "gregory" | "ethiopic";
 };
 
 function movementLabel(type: string) {
@@ -26,6 +31,9 @@ function movementLabel(type: string) {
     case "INITIAL":
       return "Initial stock";
 
+    case "RECEIVE":
+      return "Receive stock";
+
     case "ADJUSTMENT":
       return "Adjustment";
 
@@ -36,6 +44,9 @@ function movementLabel(type: string) {
 
 export function StockMovementHistory({
   movements,
+  locale,
+  timezone,
+  calendar,
 }: Props) {
   if (movements.length === 0) {
     return (
@@ -109,28 +120,32 @@ export function StockMovementHistory({
                     movement.quantityChange >
                     0
                       ? "text-emerald-700"
-                      : "text-red-700"
+                      : movement.quantityChange <
+                          0
+                        ? "text-red-700"
+                        : "text-slate-600"
                   }`}
                 >
                   {movement.quantityChange >
                   0
                     ? "+"
                     : ""}
-                  {
-                    movement.quantityChange
-                  }
+
+                  {movement.quantityChange.toLocaleString(
+                    locale
+                  )}
                 </td>
 
                 <td className="px-4 py-3 text-right">
-                  {
-                    movement.stockBefore
-                  }
+                  {movement.stockBefore.toLocaleString(
+                    locale
+                  )}
                 </td>
 
                 <td className="px-4 py-3 text-right font-medium">
-                  {
-                    movement.stockAfter
-                  }
+                  {movement.stockAfter.toLocaleString(
+                    locale
+                  )}
                 </td>
 
                 <td className="px-4 py-3 text-slate-600">
@@ -140,18 +155,13 @@ export function StockMovementHistory({
                 </td>
 
                 <td className="whitespace-nowrap px-4 py-3 text-slate-600">
-                  {new Intl.DateTimeFormat(
-                    "sv-SE",
+                  {formatDateTime(
+                    movement.createdAt,
                     {
-                      dateStyle:
-                        "medium",
-                      timeStyle:
-                        "short",
+                      locale,
+                      timezone,
+                      calendar,
                     }
-                  ).format(
-                    new Date(
-                      movement.createdAt
-                    )
                   )}
                 </td>
               </tr>

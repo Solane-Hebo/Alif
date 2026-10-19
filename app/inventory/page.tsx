@@ -7,15 +7,24 @@ import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { requireUser } from "@/lib/auth/guards";
 import { getInventory } from "@/lib/services/inventory/get-inventory";
 import { getStockMovements } from "@/lib/services/inventory/get-stock-movements";
+import { getOrganizationSettings } from "@/lib/services/organizations/get-organization-settings";
 
 export default async function InventoryPage() {
   const user = await requireUser();
 
-  const [products, movements] =
-    await Promise.all([
-      getInventory(),
-      getStockMovements(),
-    ]);
+  const [
+    products,
+    movements,
+    organization,
+  ] = await Promise.all([
+    getInventory(),
+    getStockMovements(),
+    getOrganizationSettings(),
+  ]);
+
+  if (!organization) {
+    return null;
+  }
 
   const isAdmin =
     user.role === "ADMIN";
@@ -34,6 +43,7 @@ export default async function InventoryPage() {
           </p>
         </div>
 
+        {/* Receive stock */}
         <section
           aria-labelledby="receive-stock-heading"
         >
@@ -45,16 +55,21 @@ export default async function InventoryPage() {
           </h2>
 
           <ReceiveStockForm
-  products={products.map((product) => ({
-    id: product.id,
-    name: product.name,
-    sku: product.sku,
-    barcode: product.barcode,
-    stockQuantity: product.stockQuantity,
-  }))}
-/>
+            products={products.map(
+              (product) => ({
+                id: product.id,
+                name: product.name,
+                sku: product.sku,
+                barcode:
+                  product.barcode,
+                stockQuantity:
+                  product.stockQuantity,
+              })
+            )}
+          />
         </section>
 
+        {/* ADMIN stock adjustment */}
         {isAdmin ? (
           <section
             aria-labelledby="stock-adjustment-heading"
@@ -67,17 +82,22 @@ export default async function InventoryPage() {
             </h2>
 
             <StockAdjustmentForm
-  products={products.map((product) => ({
-    id: product.id,
-    name: product.name,
-    sku: product.sku,
-    barcode: product.barcode,
-    stockQuantity: product.stockQuantity,
-  }))}
-/>
+              products={products.map(
+                (product) => ({
+                  id: product.id,
+                  name: product.name,
+                  sku: product.sku,
+                  barcode:
+                    product.barcode,
+                  stockQuantity:
+                    product.stockQuantity,
+                })
+              )}
+            />
           </section>
         ) : null}
 
+        {/* Current inventory */}
         <section
           className="space-y-4"
           aria-labelledby="current-inventory-heading"
@@ -100,9 +120,16 @@ export default async function InventoryPage() {
 
           <InventoryTable
             products={products}
+            currency={
+              organization.currency
+            }
+            locale={
+              organization.locale
+            }
           />
         </section>
 
+        {/* Stock movement history */}
         <section
           className="space-y-4"
           aria-labelledby="movement-history-heading"
@@ -121,8 +148,11 @@ export default async function InventoryPage() {
           </div>
 
           <StockMovementHistory
-            movements={movements}
-          />
+  movements={movements}
+  locale={organization.locale}
+  timezone={organization.timezone}
+  calendar={organization.calendar}
+/>
         </section>
       </div>
     </DashboardLayout>

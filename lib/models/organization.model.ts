@@ -6,6 +6,14 @@ import {
   models,
 } from "mongoose";
 
+export const ORGANIZATION_CALENDARS = [
+  "gregory",
+  "ethiopic",
+] as const;
+
+export type OrganizationCalendar =
+  (typeof ORGANIZATION_CALENDARS)[number];
+
 const organizationSchema = new Schema(
   {
     name: {
@@ -46,6 +54,13 @@ const organizationSchema = new Schema(
       trim: true,
     },
 
+    calendar: {
+      type: String,
+      required: true,
+      enum: ORGANIZATION_CALENDARS,
+      default: "gregory",
+    },
+
     isActive: {
       type: Boolean,
       default: true,
@@ -56,9 +71,10 @@ const organizationSchema = new Schema(
   }
 );
 
-export type OrganizationDocument = InferSchemaType<
-  typeof organizationSchema
->;
+export type OrganizationDocument =
+  InferSchemaType<
+    typeof organizationSchema
+  >;
 
 export const Organization =
   (models.Organization as Model<OrganizationDocument>) ||

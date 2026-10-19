@@ -1,5 +1,6 @@
 import { VoidSaleButton } from "@/components/sales/void-sale-button";
 import { formatMoney } from "@/lib/utils/money";
+import { formatDateTime } from "@/lib/utils/date-format";
 
 type SaleItem = {
   id: string;
@@ -22,11 +23,19 @@ type SaleItem = {
 type SalesHistoryProps = {
   sales: SaleItem[];
   canManageSales: boolean;
+  currency: string;
+  locale: string;
+  timezone: string;
+  calendar: "gregory" | "ethiopic";
 };
 
 export function SalesHistory({
   sales,
   canManageSales,
+  currency,
+  locale,
+  timezone,
+  calendar,
 }: SalesHistoryProps) {
   if (sales.length === 0) {
     return (
@@ -39,6 +48,18 @@ export function SalesHistory({
   const canViewFinancials =
     sales[0]?.canViewFinancials === true;
 
+ function formatSaleDate(
+  value: string
+) {
+  return formatDateTime(
+    value,
+    {
+      locale,
+      timezone,
+      calendar,
+    }
+  );
+}
   return (
     <>
       {/* Desktop */}
@@ -145,20 +166,26 @@ export function SalesHistory({
 
                 {/* Quantity */}
                 <td className="px-4 py-3 text-right">
-                  {sale.quantity}
+                  {sale.quantity.toLocaleString(
+                    locale
+                  )}
                 </td>
 
                 {/* Sale price */}
                 <td className="whitespace-nowrap px-4 py-3 text-right">
                   {formatMoney(
-                    sale.salePrice
+                    sale.salePrice,
+                    currency,
+                    locale
                   )}
                 </td>
 
                 {/* Revenue */}
                 <td className="whitespace-nowrap px-4 py-3 text-right">
                   {formatMoney(
-                    sale.revenue
+                    sale.revenue,
+                    currency,
+                    locale
                   )}
                 </td>
 
@@ -167,13 +194,17 @@ export function SalesHistory({
                   <>
                     <td className="whitespace-nowrap px-4 py-3 text-right">
                       {formatMoney(
-                        sale.cost ?? 0
+                        sale.cost ?? 0,
+                        currency,
+                        locale
                       )}
                     </td>
 
                     <td className="whitespace-nowrap px-4 py-3 text-right font-semibold text-emerald-700">
                       {formatMoney(
-                        sale.profit ?? 0
+                        sale.profit ?? 0,
+                        currency,
+                        locale
                       )}
                     </td>
                   </>
@@ -195,16 +226,8 @@ export function SalesHistory({
 
                 {/* Date */}
                 <td className="whitespace-nowrap px-4 py-3 text-slate-600">
-                  {new Intl.DateTimeFormat(
-                    "sv-SE",
-                    {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    }
-                  ).format(
-                    new Date(
-                      sale.createdAt
-                    )
+                  {formatSaleDate(
+                    sale.createdAt
                   )}
                 </td>
 
@@ -273,7 +296,9 @@ export function SalesHistory({
                 </dt>
 
                 <dd className="mt-1 font-medium text-slate-900">
-                  {sale.quantity}
+                  {sale.quantity.toLocaleString(
+                    locale
+                  )}
                 </dd>
               </div>
 
@@ -284,7 +309,9 @@ export function SalesHistory({
 
                 <dd className="mt-1 font-medium text-slate-900">
                   {formatMoney(
-                    sale.salePrice
+                    sale.salePrice,
+                    currency,
+                    locale
                   )}
                 </dd>
               </div>
@@ -296,7 +323,9 @@ export function SalesHistory({
 
                 <dd className="mt-1 font-medium text-slate-900">
                   {formatMoney(
-                    sale.revenue
+                    sale.revenue,
+                    currency,
+                    locale
                   )}
                 </dd>
               </div>
@@ -310,7 +339,9 @@ export function SalesHistory({
 
                   <dd className="mt-1 font-medium text-slate-900">
                     {formatMoney(
-                      sale.cost ?? 0
+                      sale.cost ?? 0,
+                      currency,
+                      locale
                     )}
                   </dd>
                 </div>
@@ -326,7 +357,9 @@ export function SalesHistory({
 
                 <span className="font-semibold text-emerald-700">
                   {formatMoney(
-                    sale.profit ?? 0
+                    sale.profit ?? 0,
+                    currency,
+                    locale
                   )}
                 </span>
               </div>
@@ -334,16 +367,8 @@ export function SalesHistory({
 
             {/* Date */}
             <div className="mt-4 border-t pt-3 text-xs text-slate-500">
-              {new Intl.DateTimeFormat(
-                "sv-SE",
-                {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                }
-              ).format(
-                new Date(
-                  sale.createdAt
-                )
+              {formatSaleDate(
+                sale.createdAt
               )}
             </div>
 

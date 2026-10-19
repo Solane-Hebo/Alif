@@ -16,10 +16,14 @@ type InventoryItem = {
 
 type InventoryTableProps = {
   products: InventoryItem[];
+  currency: string;
+  locale: string;
 };
 
 export function InventoryTable({
   products,
+  currency,
+  locale,
 }: InventoryTableProps) {
   if (products.length === 0) {
     return (
@@ -105,7 +109,9 @@ export function InventoryTable({
                 <td className="px-4 py-3 text-right font-medium">
                   {formatMoney(
                     product.inventoryValue ??
-                      0
+                      0,
+                    currency,
+                    locale
                   )}
                 </td>
               ) : null}

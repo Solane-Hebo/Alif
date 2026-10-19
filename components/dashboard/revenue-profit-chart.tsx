@@ -11,6 +11,7 @@ import {
   YAxis,
 } from "recharts";
 
+import type { SupportedCalendar } from "@/lib/utils/date-format";
 import { formatMoney } from "@/lib/utils/money";
 
 type ChartItem = {
@@ -23,24 +24,43 @@ type ChartItem = {
 
 type RevenueProfitChartProps = {
   data: ChartItem[];
+  currency: string;
+  locale: string;
+  calendar: SupportedCalendar;
 };
 
-function formatDate(
-  value: string
+function formatChartDate(
+  value: string,
+  locale: string,
+  calendar: SupportedCalendar
 ) {
+  const date = new Date(
+    `${value}T12:00:00`
+  );
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  const resolvedLocale =
+    new Intl.Locale(locale, {
+      calendar,
+    }).toString();
+
   return new Intl.DateTimeFormat(
-    "sv-SE",
+    resolvedLocale,
     {
       month: "short",
       day: "numeric",
     }
-  ).format(
-    new Date(`${value}T12:00:00`)
-  );
+  ).format(date);
 }
 
 export function RevenueProfitChart({
   data,
+  currency,
+  locale,
+  calendar,
 }: RevenueProfitChartProps) {
   const canViewFinancials =
     data[0]?.canViewFinancials === true;
@@ -94,15 +114,22 @@ export function RevenueProfitChart({
 
             <XAxis
               dataKey="date"
-              tickFormatter={formatDate}
+              tickFormatter={(value) =>
+                formatChartDate(
+                  String(value),
+                  locale,
+                  calendar
+                )
+              }
             />
 
             <YAxis
               tickFormatter={(value) =>
                 new Intl.NumberFormat(
-                  "sv-SE",
+                  locale,
                   {
                     notation: "compact",
+                    maximumFractionDigits: 1,
                   }
                 ).format(
                   Number(value) / 100
@@ -112,8 +139,10 @@ export function RevenueProfitChart({
 
             <Tooltip
               labelFormatter={(value) =>
-                formatDate(
-                  String(value)
+                formatChartDate(
+                  String(value),
+                  locale,
+                  calendar
                 )
               }
               formatter={(
@@ -121,7 +150,9 @@ export function RevenueProfitChart({
                 name
               ) => [
                 formatMoney(
-                  Number(value)
+                  Number(value),
+                  currency,
+                  locale
                 ),
                 String(name),
               ]}
@@ -165,25 +196,32 @@ export function RevenueProfitChart({
 
       {/* Accessible text alternative */}
       <div className="sr-only">
-        <h3>
-          Chart data
-        </h3>
+        <h3>Chart data</h3>
 
         <ul>
           {data.map((item) => (
             <li key={item.date}>
-              {formatDate(item.date)}:
-              {" "}
-              Revenue{" "}
+              {formatChartDate(
+                item.date,
+                locale,
+                calendar
+              )}
+              : Revenue{" "}
               {formatMoney(
-                item.revenue
+                item.revenue,
+                currency,
+                locale
               )}
 
               {item.canViewFinancials
                 ? `, Cost ${formatMoney(
-                    item.cost ?? 0
+                    item.cost ?? 0,
+                    currency,
+                    locale
                   )}, Profit ${formatMoney(
-                    item.profit ?? 0
+                    item.profit ?? 0,
+                    currency,
+                    locale
                   )}`
                 : ""}
             </li>

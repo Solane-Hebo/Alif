@@ -23,6 +23,10 @@ export async function registerAction(
     confirmPassword: formData.get(
       "confirmPassword"
     ),
+    currency: formData.get("currency"),
+    locale: formData.get("locale"),
+    timezone: formData.get("timezone"),
+    calendar: formData.get("calendar"),
   });
 
   if (!parsed.success) {
@@ -33,18 +37,43 @@ export async function registerAction(
     };
   }
 
-  const result = await registerOrganization({
-    organizationName:
-      parsed.data.organizationName,
-    name: parsed.data.name,
-    email: parsed.data.email,
-    password: parsed.data.password,
-  });
+  const result =
+    await registerOrganization({
+      organizationName:
+        parsed.data.organizationName,
+      name: parsed.data.name,
+      email: parsed.data.email,
+      password: parsed.data.password,
+      currency: parsed.data.currency,
+      locale: parsed.data.locale,
+      timezone: parsed.data.timezone,
+      calendar: parsed.data.calendar,
+    });
 
   if (!result.success) {
+    if (
+      result.reason ===
+      "EMAIL_EXISTS"
+    ) {
+      return {
+        error:
+          "An account with this email already exists.",
+      };
+    }
+
+    if (
+      result.reason ===
+      "INVALID_ORGANIZATION_SETTINGS"
+    ) {
+      return {
+        error:
+          "Please check the company currency, regional format, timezone and calendar.",
+      };
+    }
+
     return {
       error:
-        "An account with this email already exists.",
+        "Unable to create the company account.",
     };
   }
 

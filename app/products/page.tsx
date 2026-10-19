@@ -8,6 +8,8 @@ import {
   CardContent,
 } from "@/components/ui/card";
 
+import { getOrganizationSettings } from "@/lib/services/organizations/get-organization-settings";
+
 import { requireUser } from "@/lib/auth/guards";
 import { getProducts } from "@/lib/services/products/get-products";
 import { formatMoney } from "@/lib/utils/money";
@@ -42,20 +44,29 @@ export default async function ProductsPage({
       ? params.stock
       : "all";
 
-  const user = await requireUser();
+ const user = await requireUser();
 
-  const products = await getProducts({
-    search,
-    category,
-    stock,
-  });
+const [products, organization] =
+  await Promise.all([
+    getProducts({
+      search,
+      category,
+      stock,
+    }),
+    getOrganizationSettings(),
+  ]);
 
-  const isAdmin = user.role === "ADMIN";
+if (!organization) {
+  return null;
+}
 
-  const hasFilters =
-    Boolean(search) ||
-    Boolean(category) ||
-    stock !== "all";
+const isAdmin =
+  user.role === "ADMIN";
+
+const hasFilters =
+  Boolean(search) ||
+  Boolean(category) ||
+  stock !== "all";
 
   return (
     <DashboardLayout>
@@ -290,15 +301,19 @@ export default async function ProductsPage({
                     {isAdmin ? (
                       <td className="whitespace-nowrap px-4 py-3 text-right">
                         {formatMoney(
-                          product.purchasePrice!
+                          product.purchasePrice!,
+                           organization.currency,
+                           organization.locale
                         )}
                       </td>
                     ) : null}
 
                     <td className="whitespace-nowrap px-4 py-3 text-right">
                       {formatMoney(
-                        product.sellingPrice
-                      )}
+  product.sellingPrice,
+  organization.currency,
+  organization.locale
+)}
                     </td>
 
                     <td className="px-4 py-3 text-right">
@@ -439,8 +454,10 @@ export default async function ProductsPage({
 
                       <dd className="mt-1 font-medium text-slate-800">
                         {formatMoney(
-                          product.purchasePrice!
-                        )}
+  product.purchasePrice!,
+  organization.currency,
+  organization.locale
+)}
                       </dd>
                     </div>
                   ) : null}
@@ -452,8 +469,10 @@ export default async function ProductsPage({
 
                     <dd className="mt-1 font-medium text-slate-800">
                       {formatMoney(
-                        product.sellingPrice
-                      )}
+  product.sellingPrice,
+  organization.currency,
+  organization.locale
+)}
                     </dd>
                   </div>
                 </dl>

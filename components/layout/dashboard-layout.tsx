@@ -18,12 +18,13 @@ export async function DashboardLayout({
 
   await connectToDatabase();
 
-  const organization = await Organization.findOne({
-    _id: user.organizationId,
-    isActive: true,
-  })
-    .select("name")
-    .lean();
+  const organization =
+    await Organization.findOne({
+      _id: user.organizationId,
+      isActive: true,
+    })
+      .select("name")
+      .lean();
 
   if (!organization) {
     throw new Error(
@@ -35,11 +36,18 @@ export async function DashboardLayout({
     <div className="min-h-screen bg-slate-50">
       <div className="flex min-h-screen">
         <AppSidebar
-          organizationName={organization.name}
+          organizationName={
+            organization.name
+          }
+          role={user.role}
         />
 
         <div className="min-w-0 flex-1">
-          <AppHeader />
+          <AppHeader
+            organizationName={
+              organization.name
+            }
+          />
 
           <main className="p-4 md:p-6 lg:p-8">
             {children}

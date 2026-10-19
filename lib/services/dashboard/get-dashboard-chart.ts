@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 
 import { getTenantContext } from "@/lib/auth/tenant";
 import { connectToDatabase } from "@/lib/db/mongoose";
+import { Organization } from "@/lib/models/organization.model";
 import { Sale } from "@/lib/models/sale.model";
 
 export async function getDashboardChart() {
@@ -18,6 +19,18 @@ export async function getDashboardChart() {
     new mongoose.Types.ObjectId(
       organizationId
     );
+
+  const organization =
+    await Organization.findOne({
+      _id: organizationObjectId,
+      isActive: true,
+    })
+      .select("timezone")
+      .lean();
+
+  const timezone =
+    organization?.timezone ??
+    "Europe/Stockholm";
 
   /*
    * STAFF chart:
@@ -40,6 +53,7 @@ export async function getDashboardChart() {
             $dateToString: {
               format: "%Y-%m-%d",
               date: "$createdAt",
+              timezone,
             },
           },
 
@@ -62,10 +76,7 @@ export async function getDashboardChart() {
 
     return rows.map((row) => ({
       date: row._id,
-
-      revenue:
-        row.revenue,
-
+      revenue: row.revenue,
       canViewFinancials:
         false as const,
     }));
@@ -89,6 +100,7 @@ export async function getDashboardChart() {
           $dateToString: {
             format: "%Y-%m-%d",
             date: "$createdAt",
+            timezone,
           },
         },
 
@@ -120,16 +132,10 @@ export async function getDashboardChart() {
 
   return rows.map((row) => ({
     date: row._id,
-
-    revenue:
-      row.revenue,
-
-    cost:
-      row.cost,
-
+    revenue: row.revenue,
+    cost: row.cost,
     profit:
       row.revenue - row.cost,
-
     canViewFinancials:
       true as const,
   }));
