@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { connectToDatabase } from "@/lib/db/mongoose";
+import { Organization } from "@/lib/models/organization.model";
 import { User } from "@/lib/models/user.model";
 
 export async function requireUser() {
@@ -21,7 +22,8 @@ export async function requireUser() {
 
   const databaseUser = await User.findOne({
     _id: session.user.id,
-    organizationId: session.user.organizationId,
+    organizationId:
+      session.user.organizationId,
     isActive: true,
   })
     .select(
@@ -33,6 +35,18 @@ export async function requireUser() {
     redirect("/login");
   }
 
+  const organization =
+    await Organization.findOne({
+      _id: databaseUser.organizationId,
+      isActive: true,
+    })
+      .select("_id")
+      .lean();
+
+  if (!organization) {
+    redirect("/login");
+  }
+
   const databaseSessionVersion =
     databaseUser.sessionVersion ?? 0;
 
@@ -40,19 +54,26 @@ export async function requireUser() {
     session.user.sessionVersion ?? 0;
 
   if (
-    databaseSessionVersion !== tokenSessionVersion
+    databaseSessionVersion !==
+    tokenSessionVersion
   ) {
     redirect("/login");
   }
 
   return {
     id: databaseUser._id.toString(),
+
     organizationId:
       databaseUser.organizationId.toString(),
+
     role: databaseUser.role,
+
     name: databaseUser.name,
+
     email: databaseUser.email,
-    sessionVersion: databaseSessionVersion,
+
+    sessionVersion:
+      databaseSessionVersion,
   };
 }
 

@@ -6,7 +6,11 @@ export function parseMoneyToMinorUnits(
     .replace(/\s/g, "")
     .replace(",", ".");
 
-  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) {
+  if (
+    !/^\d+(\.\d{1,2})?$/.test(
+      normalized
+    )
+  ) {
     return null;
   }
 
@@ -15,9 +19,13 @@ export function parseMoneyToMinorUnits(
 
   const minor =
     Number(whole) * 100 +
-    Number(decimal.padEnd(2, "0"));
+    Number(
+      decimal.padEnd(2, "0")
+    );
 
-  if (!Number.isSafeInteger(minor)) {
+  if (
+    !Number.isSafeInteger(minor)
+  ) {
     return null;
   }
 
@@ -29,8 +37,23 @@ export function formatMoney(
   currency = "SEK",
   locale = "sv-SE"
 ) {
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-  }).format(amount / 100);
+  const value = amount / 100;
+
+  if (currency === "ETB") {
+    const formatted =
+      new Intl.NumberFormat(locale, {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      }).format(value);
+
+    return `${formatted} Birr`;
+  }
+
+  return new Intl.NumberFormat(
+    locale,
+    {
+      style: "currency",
+      currency,
+    }
+  ).format(value);
 }

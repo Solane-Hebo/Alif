@@ -1,7 +1,10 @@
 "use client";
 
 import { useActionState } from "react";
-import { Building2, Loader2 } from "lucide-react";
+import {
+  Building2,
+  Loader2,
+} from "lucide-react";
 
 import {
   registerAction,
@@ -15,10 +18,17 @@ const initialState: RegisterState = {};
 
 export function RegisterForm() {
   const [state, formAction, pending] =
-    useActionState(registerAction, initialState);
+    useActionState(
+      registerAction,
+      initialState
+    );
 
   return (
-    <form action={formAction} className="space-y-5">
+    <form
+      action={formAction}
+      className="space-y-5"
+    >
+      {/* Company */}
       <div className="space-y-2">
         <label
           htmlFor="organizationName"
@@ -37,6 +47,7 @@ export function RegisterForm() {
         />
       </div>
 
+      {/* Admin name */}
       <div className="space-y-2">
         <label
           htmlFor="name"
@@ -55,6 +66,7 @@ export function RegisterForm() {
         />
       </div>
 
+      {/* Email */}
       <div className="space-y-2">
         <label
           htmlFor="email"
@@ -73,6 +85,160 @@ export function RegisterForm() {
         />
       </div>
 
+      {/* Organization settings */}
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <div className="mb-4">
+          <h2 className="text-sm font-semibold text-slate-900">
+            Company settings
+          </h2>
+
+          <p className="mt-1 text-xs text-slate-500">
+            Choose how money, dates and
+            times should be displayed.
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          {/* Currency */}
+          <div className="space-y-2">
+            <label
+              htmlFor="currency"
+              className="text-sm font-medium text-slate-700"
+            >
+              Currency
+            </label>
+
+            <select
+              id="currency"
+              name="currency"
+              defaultValue="ETB"
+              required
+              disabled={pending}
+              className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="ETB">
+                Ethiopian Birr (ETB)
+              </option>
+
+              <option value="SEK">
+                Swedish Krona (SEK)
+              </option>
+
+              <option value="USD">
+                US Dollar (USD)
+              </option>
+
+              <option value="EUR">
+                Euro (EUR)
+              </option>
+            </select>
+          </div>
+
+          {/* Locale */}
+          <div className="space-y-2">
+            <label
+              htmlFor="locale"
+              className="text-sm font-medium text-slate-700"
+            >
+              Regional format
+            </label>
+
+            <select
+              id="locale"
+              name="locale"
+              defaultValue="en-ET"
+              required
+              disabled={pending}
+              className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="en-ET">
+                Ethiopia — English
+              </option>
+
+              <option value="am-ET">
+                Ethiopia — Amharic
+              </option>
+
+              <option value="sv-SE">
+                Sweden — Swedish
+              </option>
+
+              <option value="en-US">
+                United States — English
+              </option>
+            </select>
+          </div>
+
+          {/* Timezone */}
+          <div className="space-y-2">
+            <label
+              htmlFor="timezone"
+              className="text-sm font-medium text-slate-700"
+            >
+              Timezone
+            </label>
+
+            <select
+              id="timezone"
+              name="timezone"
+              defaultValue="Africa/Addis_Ababa"
+              required
+              disabled={pending}
+              className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="Africa/Addis_Ababa">
+                Addis Ababa
+              </option>
+
+              <option value="Europe/Stockholm">
+                Stockholm
+              </option>
+
+              <option value="America/New_York">
+                New York
+              </option>
+
+              <option value="UTC">
+                UTC
+              </option>
+            </select>
+          </div>
+
+          {/* Calendar */}
+          <div className="space-y-2">
+            <label
+              htmlFor="calendar"
+              className="text-sm font-medium text-slate-700"
+            >
+              Calendar
+            </label>
+
+            <select
+              id="calendar"
+              name="calendar"
+              defaultValue="ethiopic"
+              required
+              disabled={pending}
+              className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="ethiopic">
+                Ethiopian calendar
+              </option>
+
+              <option value="gregory">
+                Gregorian calendar
+              </option>
+            </select>
+
+            <p className="text-xs text-slate-500">
+              Controls how dates are displayed.
+              Stored timestamps remain unchanged.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Password */}
       <div className="space-y-2">
         <label
           htmlFor="password"
@@ -97,6 +263,7 @@ export function RegisterForm() {
         </p>
       </div>
 
+      {/* Confirm password */}
       <div className="space-y-2">
         <label
           htmlFor="confirmPassword"
@@ -117,6 +284,7 @@ export function RegisterForm() {
         />
       </div>
 
+      {/* Error */}
       {state.error ? (
         <p
           role="alert"
@@ -126,6 +294,7 @@ export function RegisterForm() {
         </p>
       ) : null}
 
+      {/* Submit */}
       <Button
         type="submit"
         className="w-full bg-emerald-600 hover:bg-emerald-700"
@@ -134,7 +303,7 @@ export function RegisterForm() {
         {pending ? (
           <>
             <Loader2
-              className="mr-2 h-4 w-4 animate-spin"
+              className="mr-2 size-4 animate-spin"
               aria-hidden="true"
             />
             Creating account...
@@ -142,7 +311,7 @@ export function RegisterForm() {
         ) : (
           <>
             <Building2
-              className="mr-2 h-4 w-4"
+              className="mr-2 size-4"
               aria-hidden="true"
             />
             Create company account
