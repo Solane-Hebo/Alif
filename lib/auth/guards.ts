@@ -2,79 +2,16 @@ import "server-only";
 
 import { redirect } from "next/navigation";
 
-import { auth } from "@/auth";
-import { connectToDatabase } from "@/lib/db/mongoose";
-import { Organization } from "@/lib/models/organization.model";
-import { User } from "@/lib/models/user.model";
+import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 
 export async function requireUser() {
-  const session = await auth();
+  const user = await getAuthenticatedUser();
 
-  if (
-    !session?.user?.id ||
-    !session.user.organizationId ||
-    !session.user.role
-  ) {
+  if (!user) {
     redirect("/login");
   }
 
-  await connectToDatabase();
-
-  const databaseUser = await User.findOne({
-    _id: session.user.id,
-    organizationId:
-      session.user.organizationId,
-    isActive: true,
-  })
-    .select(
-      "_id organizationId role sessionVersion name email"
-    )
-    .lean();
-
-  if (!databaseUser) {
-    redirect("/login");
-  }
-
-  const organization =
-    await Organization.findOne({
-      _id: databaseUser.organizationId,
-      isActive: true,
-    })
-      .select("_id")
-      .lean();
-
-  if (!organization) {
-    redirect("/login");
-  }
-
-  const databaseSessionVersion =
-    databaseUser.sessionVersion ?? 0;
-
-  const tokenSessionVersion =
-    session.user.sessionVersion ?? 0;
-
-  if (
-    databaseSessionVersion !==
-    tokenSessionVersion
-  ) {
-    redirect("/login");
-  }
-
-  return {
-    id: databaseUser._id.toString(),
-
-    organizationId:
-      databaseUser.organizationId.toString(),
-
-    role: databaseUser.role,
-
-    name: databaseUser.name,
-
-    email: databaseUser.email,
-
-    sessionVersion:
-      databaseSessionVersion,
-  };
+  return user;
 }
 
 export async function requireAdmin() {

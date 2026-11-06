@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Bot } from "lucide-react";
 
 import {
   Boxes,
@@ -74,6 +75,13 @@ const navigation = [
     enabled: true,
     adminOnly: true,
   },
+  {
+  name: "AI Assistant",
+  icon: Bot,
+  href: "/ai-assistant",
+  enabled: true,
+  adminOnly: false,
+},
 ];
 
 export function SidebarNavigation({
