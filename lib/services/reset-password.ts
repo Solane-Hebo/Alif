@@ -18,14 +18,27 @@ export async function resetPassword({
 }: ResetPasswordInput) {
   await connectToDatabase();
 
+  /*
+   * Hash the new password before consuming the token.
+   * This avoids consuming a valid token if hashing fails.
+   */
+  const passwordHash = await bcrypt.hash(password, 12);
+
   const tokenHash = hashPasswordResetToken(token);
 
-  const resetToken = await PasswordResetToken.findOne({
-    tokenHash,
-    expiresAt: {
-      $gt: new Date(),
-    },
-  });
+  /*
+   * Atomically consume the reset token.
+   *
+   * Only one concurrent request can successfully
+   * delete and receive this token.
+   */
+  const resetToken =
+    await PasswordResetToken.findOneAndDelete({
+      tokenHash,
+      expiresAt: {
+        $gt: new Date(),
+      },
+    });
 
   if (!resetToken) {
     return {
@@ -34,31 +47,29 @@ export async function resetPassword({
     };
   }
 
-  const passwordHash = await bcrypt.hash(password, 12);
-
+  /*
+   * Update the password and invalidate existing
+   * sessions by incrementing sessionVersion.
+   */
   const user = await User.findOneAndUpdate(
     {
       _id: resetToken.userId,
       isActive: true,
     },
-   {
-  $set: {
-    passwordHash,
-  },
-  $inc: {
-    sessionVersion: 1,
-  },
-},
+    {
+      $set: {
+        passwordHash,
+      },
+      $inc: {
+        sessionVersion: 1,
+      },
+    },
     {
       new: true,
     }
   );
 
   if (!user) {
-    await PasswordResetToken.deleteOne({
-      _id: resetToken._id,
-    });
-
     return {
       success: false as const,
       reason: "INVALID_OR_EXPIRED" as const,
@@ -66,7 +77,7 @@ export async function resetPassword({
   }
 
   /*
-   * Invalidate every outstanding password-reset token
+   * Invalidate all other reset tokens
    * belonging to this user.
    */
   await PasswordResetToken.deleteMany({

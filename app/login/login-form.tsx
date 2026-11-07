@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
-import { Loader2, LogIn } from "lucide-react";
+import { useActionState, useState } from "react";
+import { AlertCircle, Loader2, LogIn } from "lucide-react";
 
 import {
   loginAction,
@@ -16,16 +16,59 @@ const initialState: LoginState = {};
 
 export function LoginForm() {
   const [state, formAction, pending] =
-    useActionState(
-      loginAction,
-      initialState
-    );
+    useActionState(loginAction, initialState);
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const [editedFields, setEditedFields] = useState({
+    email: false,
+    password: false,
+  });
+
+  const emailError = editedFields.email
+    ? undefined
+    : state.fieldErrors?.email;
+
+  const passwordError = editedFields.password
+    ? undefined
+    : state.fieldErrors?.password;
+
+  function handleEmailChange(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    setEmail(event.target.value);
+
+    setEditedFields((previous) => ({
+      ...previous,
+      email: true,
+    }));
+  }
+
+  function handlePasswordChange(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    setPassword(event.target.value);
+
+    setEditedFields((previous) => ({
+      ...previous,
+      password: true,
+    }));
+  }
 
   return (
     <form
       action={formAction}
+      noValidate
       className="space-y-5"
+      onSubmit={() => {
+        setEditedFields({
+          email: false,
+          password: false,
+        });
+      }}
     >
+      {/* Email */}
       <div className="space-y-2">
         <label
           htmlFor="email"
@@ -40,11 +83,36 @@ export function LoginForm() {
           type="email"
           autoComplete="email"
           placeholder="admin@company.com"
-          required
+          value={email}
+          onChange={handleEmailChange}
+          aria-invalid={Boolean(emailError)}
+          aria-describedby={
+            emailError ? "email-error" : undefined
+          }
+          className={
+            emailError
+              ? "border-red-500 focus-visible:ring-red-500"
+              : ""
+          }
           disabled={pending}
         />
+
+        {emailError ? (
+          <p
+            id="email-error"
+            className="flex items-center gap-1.5 text-sm text-red-600"
+          >
+            <AlertCircle
+              className="size-4 shrink-0"
+              aria-hidden="true"
+            />
+
+            {emailError}
+          </p>
+        ) : null}
       </div>
 
+      {/* Password */}
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-4">
           <label
@@ -68,22 +136,51 @@ export function LoginForm() {
           type="password"
           autoComplete="current-password"
           placeholder="Enter your password"
-          required
-          minLength={8}
-          maxLength={128}
+          value={password}
+          onChange={handlePasswordChange}
+          aria-invalid={Boolean(passwordError)}
+          aria-describedby={
+            passwordError ? "password-error" : undefined
+          }
+          className={
+            passwordError
+              ? "border-red-500 focus-visible:ring-red-500"
+              : ""
+          }
           disabled={pending}
         />
+
+        {passwordError ? (
+          <p
+            id="password-error"
+            className="flex items-center gap-1.5 text-sm text-red-600"
+          >
+            <AlertCircle
+              className="size-4 shrink-0"
+              aria-hidden="true"
+            />
+
+            {passwordError}
+          </p>
+        ) : null}
       </div>
 
+      {/* Authentication error */}
       {state.error ? (
-        <p
+        <div
           role="alert"
-          className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+          className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700"
         >
-          {state.error}
-        </p>
+          <AlertCircle
+            className="mt-0.5 size-4 shrink-0"
+            aria-hidden="true"
+          />
+
+          <p>{state.error}</p>
+        </div>
       ) : null}
 
+      {/* Submit */}
       <Button
         type="submit"
         className="w-full bg-emerald-600 hover:bg-emerald-700"
@@ -92,7 +189,7 @@ export function LoginForm() {
         {pending ? (
           <>
             <Loader2
-              className="mr-2 h-4 w-4 animate-spin"
+              className="mr-2 size-4 animate-spin"
               aria-hidden="true"
             />
             Signing in...
@@ -100,7 +197,7 @@ export function LoginForm() {
         ) : (
           <>
             <LogIn
-              className="mr-2 h-4 w-4"
+              className="mr-2 size-4"
               aria-hidden="true"
             />
             Sign in

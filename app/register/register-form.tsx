@@ -1,13 +1,20 @@
 "use client";
 
-import { useActionState } from "react";
 import {
+  useActionState,
+  useState,
+  type ReactNode,
+} from "react";
+
+import {
+  AlertCircle,
   Building2,
   Loader2,
 } from "lucide-react";
 
 import {
   registerAction,
+  type RegisterField,
   type RegisterState,
 } from "./actions";
 
@@ -16,76 +23,154 @@ import { Input } from "@/components/ui/input";
 
 const initialState: RegisterState = {};
 
+type FieldProps = {
+  id: RegisterField;
+  label: string;
+  error?: string;
+  children: ReactNode;
+  description?: string;
+};
+
+function FormField({
+  id,
+  label,
+  error,
+  children,
+  description,
+}: FieldProps) {
+  return (
+    <div className="space-y-2">
+      <label
+        htmlFor={id}
+        className="text-sm font-medium text-slate-700"
+      >
+        {label}
+      </label>
+
+      {children}
+
+      {error ? (
+        <p
+          id={`${id}-error`}
+          className="flex items-center gap-1.5 text-sm text-red-600"
+        >
+          <AlertCircle
+            className="size-4 shrink-0"
+            aria-hidden="true"
+          />
+          {error}
+        </p>
+      ) : description ? (
+        <p
+          id={`${id}-description`}
+          className="text-xs text-slate-500"
+        >
+          {description}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+const selectClassName =
+  "h-10 w-full rounded-md border border-input bg-white px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50";
+
 export function RegisterForm() {
   const [state, formAction, pending] =
-    useActionState(
-      registerAction,
-      initialState
-    );
+    useActionState(registerAction, initialState);
+
+  const [editedFields, setEditedFields] = useState<
+    Partial<Record<RegisterField, boolean>>
+  >({});
+
+  function getError(field: RegisterField) {
+    return editedFields[field]
+      ? undefined
+      : state.fieldErrors?.[field];
+  }
+
+  function markEdited(field: RegisterField) {
+    setEditedFields((previous) => ({
+      ...previous,
+      [field]: true,
+    }));
+  }
+
+  function fieldAccessibility(field: RegisterField) {
+    const error = getError(field);
+
+    return {
+      "aria-invalid": Boolean(error) as boolean,
+      "aria-describedby": error
+        ? `${field}-error`
+        : undefined,
+    };
+  }
+
+  function errorClass(field: RegisterField) {
+    return getError(field)
+      ? "border-red-500 focus-visible:ring-red-500"
+      : "";
+  }
 
   return (
     <form
       action={formAction}
+      noValidate
       className="space-y-5"
+      onSubmit={() => setEditedFields({})}
     >
-      {/* Company */}
-      <div className="space-y-2">
-        <label
-          htmlFor="organizationName"
-          className="text-sm font-medium text-slate-700"
-        >
-          Company name
-        </label>
-
+      <FormField
+        id="organizationName"
+        label="Company name"
+        error={getError("organizationName")}
+      >
         <Input
           id="organizationName"
           name="organizationName"
           autoComplete="organization"
-          required
           maxLength={120}
           disabled={pending}
+          onChange={() => markEdited("organizationName")}
+          {...fieldAccessibility("organizationName")}
+          className={errorClass("organizationName")}
         />
-      </div>
+      </FormField>
 
-      {/* Admin name */}
-      <div className="space-y-2">
-        <label
-          htmlFor="name"
-          className="text-sm font-medium text-slate-700"
-        >
-          Your name
-        </label>
-
+      <FormField
+        id="name"
+        label="Your name"
+        error={getError("name")}
+      >
         <Input
           id="name"
           name="name"
           autoComplete="name"
-          required
           maxLength={100}
           disabled={pending}
+          onChange={() => markEdited("name")}
+          {...fieldAccessibility("name")}
+          className={errorClass("name")}
         />
-      </div>
+      </FormField>
 
-      {/* Email */}
-      <div className="space-y-2">
-        <label
-          htmlFor="email"
-          className="text-sm font-medium text-slate-700"
-        >
-          Email
-        </label>
-
+      <FormField
+        id="email"
+        label="Email"
+        error={getError("email")}
+      >
         <Input
           id="email"
           name="email"
           type="email"
           autoComplete="email"
-          required
           disabled={pending}
+          onChange={() => markEdited("email")}
+          {...fieldAccessibility("email")}
+          className={errorClass("email")}
         />
-      </div>
+      </FormField>
 
-      {/* Organization settings */}
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
         <div className="mb-4">
           <h2 className="text-sm font-semibold text-slate-900">
@@ -93,208 +178,155 @@ export function RegisterForm() {
           </h2>
 
           <p className="mt-1 text-xs text-slate-500">
-            Choose how money, dates and
-            times should be displayed.
+            Choose how money, dates and times should be displayed.
           </p>
         </div>
 
         <div className="space-y-4">
-          {/* Currency */}
-          <div className="space-y-2">
-            <label
-              htmlFor="currency"
-              className="text-sm font-medium text-slate-700"
-            >
-              Currency
-            </label>
-
+          <FormField
+            id="currency"
+            label="Currency"
+            error={getError("currency")}
+          >
             <select
               id="currency"
               name="currency"
               defaultValue="ETB"
-              required
               disabled={pending}
-              className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+              onChange={() => markEdited("currency")}
+              {...fieldAccessibility("currency")}
+              className={`${selectClassName} ${errorClass("currency")}`}
             >
-              <option value="ETB">
-                Ethiopian Birr (ETB)
-              </option>
-
-              <option value="SEK">
-                Swedish Krona (SEK)
-              </option>
-
-              <option value="USD">
-                US Dollar (USD)
-              </option>
-
-              <option value="EUR">
-                Euro (EUR)
-              </option>
+              <option value="ETB">Ethiopian Birr (ETB)</option>
+              <option value="SEK">Swedish Krona (SEK)</option>
+              <option value="USD">US Dollar (USD)</option>
+              <option value="EUR">Euro (EUR)</option>
             </select>
-          </div>
+          </FormField>
 
-          {/* Locale */}
-          <div className="space-y-2">
-            <label
-              htmlFor="locale"
-              className="text-sm font-medium text-slate-700"
-            >
-              Regional format
-            </label>
-
+          <FormField
+            id="locale"
+            label="Regional format"
+            error={getError("locale")}
+          >
             <select
               id="locale"
               name="locale"
               defaultValue="en-ET"
-              required
               disabled={pending}
-              className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+              onChange={() => markEdited("locale")}
+              {...fieldAccessibility("locale")}
+              className={`${selectClassName} ${errorClass("locale")}`}
             >
-              <option value="en-ET">
-                Ethiopia — English
-              </option>
-
-              <option value="am-ET">
-                Ethiopia — Amharic
-              </option>
-
-              <option value="sv-SE">
-                Sweden — Swedish
-              </option>
-
-              <option value="en-US">
-                United States — English
-              </option>
+              <option value="en-ET">Ethiopia — English</option>
+              <option value="am-ET">Ethiopia — Amharic</option>
+              <option value="sv-SE">Sweden — Swedish</option>
+              <option value="en-US">United States — English</option>
             </select>
-          </div>
+          </FormField>
 
-          {/* Timezone */}
-          <div className="space-y-2">
-            <label
-              htmlFor="timezone"
-              className="text-sm font-medium text-slate-700"
-            >
-              Timezone
-            </label>
-
+          <FormField
+            id="timezone"
+            label="Timezone"
+            error={getError("timezone")}
+          >
             <select
               id="timezone"
               name="timezone"
               defaultValue="Africa/Addis_Ababa"
-              required
               disabled={pending}
-              className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+              onChange={() => markEdited("timezone")}
+              {...fieldAccessibility("timezone")}
+              className={`${selectClassName} ${errorClass("timezone")}`}
             >
               <option value="Africa/Addis_Ababa">
                 Addis Ababa
               </option>
-
               <option value="Europe/Stockholm">
                 Stockholm
               </option>
-
               <option value="America/New_York">
                 New York
               </option>
-
-              <option value="UTC">
-                UTC
-              </option>
+              <option value="UTC">UTC</option>
             </select>
-          </div>
+          </FormField>
 
-          {/* Calendar */}
-          <div className="space-y-2">
-            <label
-              htmlFor="calendar"
-              className="text-sm font-medium text-slate-700"
-            >
-              Calendar
-            </label>
-
+          <FormField
+            id="calendar"
+            label="Calendar"
+            error={getError("calendar")}
+            description="Controls how dates are displayed. Stored timestamps remain unchanged."
+          >
             <select
               id="calendar"
               name="calendar"
               defaultValue="ethiopic"
-              required
               disabled={pending}
-              className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+              onChange={() => markEdited("calendar")}
+              {...fieldAccessibility("calendar")}
+              className={`${selectClassName} ${errorClass("calendar")}`}
             >
               <option value="ethiopic">
                 Ethiopian calendar
               </option>
-
               <option value="gregory">
                 Gregorian calendar
               </option>
             </select>
-
-            <p className="text-xs text-slate-500">
-              Controls how dates are displayed.
-              Stored timestamps remain unchanged.
-            </p>
-          </div>
+          </FormField>
         </div>
       </div>
 
-      {/* Password */}
-      <div className="space-y-2">
-        <label
-          htmlFor="password"
-          className="text-sm font-medium text-slate-700"
-        >
-          Password
-        </label>
-
+      <FormField
+        id="password"
+        label="Password"
+        error={getError("password")}
+        description="Use at least 12 characters."
+      >
         <Input
           id="password"
           name="password"
           type="password"
           autoComplete="new-password"
-          required
-          minLength={12}
           maxLength={128}
           disabled={pending}
+          onChange={() => markEdited("password")}
+          {...fieldAccessibility("password")}
+          className={errorClass("password")}
         />
+      </FormField>
 
-        <p className="text-xs text-slate-500">
-          Use at least 12 characters.
-        </p>
-      </div>
-
-      {/* Confirm password */}
-      <div className="space-y-2">
-        <label
-          htmlFor="confirmPassword"
-          className="text-sm font-medium text-slate-700"
-        >
-          Confirm password
-        </label>
-
+      <FormField
+        id="confirmPassword"
+        label="Confirm password"
+        error={getError("confirmPassword")}
+      >
         <Input
           id="confirmPassword"
           name="confirmPassword"
           type="password"
           autoComplete="new-password"
-          required
-          minLength={12}
-          maxLength={128}
           disabled={pending}
+          onChange={() => markEdited("confirmPassword")}
+          {...fieldAccessibility("confirmPassword")}
+          className={errorClass("confirmPassword")}
         />
-      </div>
+      </FormField>
 
-      {/* Error */}
       {state.error ? (
-        <p
+        <div
           role="alert"
-          className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+          className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700"
         >
-          {state.error}
-        </p>
+          <AlertCircle
+            className="mt-0.5 size-4 shrink-0"
+            aria-hidden="true"
+          />
+          <p>{state.error}</p>
+        </div>
       ) : null}
 
-      {/* Submit */}
       <Button
         type="submit"
         className="w-full bg-emerald-600 hover:bg-emerald-700"

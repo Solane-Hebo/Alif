@@ -9,7 +9,8 @@ const forgotPasswordSchema = z.object({
     .string()
     .trim()
     .toLowerCase()
-    .email(),
+    .min(1, "Email address is required.")
+    .email("Enter a valid email address."),
 });
 
 export type ForgotPasswordState = {
@@ -27,13 +28,25 @@ export async function forgotPasswordAction(
 
   if (!parsed.success) {
     return {
-      error: "Enter a valid email address.",
+      error:
+        parsed.error.issues[0]?.message ??
+        "Enter a valid email address.",
     };
   }
 
-  await requestPasswordReset(parsed.data.email);
+  try {
+    await requestPasswordReset(parsed.data.email);
 
-  return {
-    success: true,
-  };
+    return {
+      success: true,
+    };
+  } catch (error) {
+    // Keep technical details out of the UI.
+    console.error("Password reset request failed:", error);
+
+    return {
+      error:
+        "We couldn't process your request right now. Please try again later.",
+    };
+  }
 }

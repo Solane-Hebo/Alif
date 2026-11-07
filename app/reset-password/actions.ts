@@ -1,7 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
-
 import { signOut } from "@/auth";
 import { resetPassword } from "@/lib/services/reset-password";
 import { resetPasswordSchema } from "@/lib/validations/reset-password";
@@ -44,5 +42,5 @@ export async function resetPasswordAction(
     redirectTo: "/login?reset=1",
   });
 
-  redirect("/login?reset=1");
+  return {};
 }

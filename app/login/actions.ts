@@ -6,12 +6,27 @@ import { z } from "zod";
 import { signIn } from "@/auth";
 
 const loginSchema = z.object({
-  email: z.string().email("Enter a valid email address."),
-  password: z.string().min(8, "Password must be at least 8 characters."),
+  email: z
+    .string()
+    .trim()
+    .min(1, "Email address is required.")
+    .email("Enter a valid email address.")
+    .toLowerCase(),
+
+  password: z
+    .string()
+    .min(1, "Password is required.")
+    .min(8, "Password must contain at least 8 characters.")
+    .max(128, "Password must not exceed 128 characters."),
 });
 
 export type LoginState = {
   error?: string;
+
+  fieldErrors?: {
+    email?: string;
+    password?: string;
+  };
 };
 
 export async function loginAction(
@@ -24,8 +39,13 @@ export async function loginAction(
   });
 
   if (!parsed.success) {
+    const errors = z.flattenError(parsed.error).fieldErrors;
+
     return {
-      error: "Enter a valid email and password.",
+      fieldErrors: {
+        email: errors.email?.[0],
+        password: errors.password?.[0],
+      },
     };
   }
 
@@ -44,6 +64,8 @@ export async function loginAction(
       };
     }
 
+    // Next.js redirects are thrown internally.
+    // They must not be converted into login errors.
     throw error;
   }
 }
