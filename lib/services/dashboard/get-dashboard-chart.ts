@@ -38,49 +38,43 @@ export async function getDashboardChart() {
    *
    * purchasePriceAtSale is never referenced.
    */
-  if (role !== "ADMIN") {
-    const rows = await Sale.aggregate([
-      {
-        $match: {
-          organizationId:
-            organizationObjectId,
-          status: "COMPLETED",
-        },
+if (role !== "ADMIN") {
+  const rows = await Sale.aggregate([
+    {
+      $match: {
+        organizationId:
+          organizationObjectId,
+        status: "COMPLETED",
       },
-      {
-        $group: {
-          _id: {
-            $dateToString: {
-              format: "%Y-%m-%d",
-              date: "$createdAt",
-              timezone,
-            },
-          },
-
-          revenue: {
-            $sum: {
-              $multiply: [
-                "$salePrice",
-                "$quantity",
-              ],
-            },
+    },
+    {
+      $group: {
+        _id: {
+          $dateToString: {
+            format: "%Y-%m-%d",
+            date: "$createdAt",
+            timezone,
           },
         },
-      },
-      {
-        $sort: {
-          _id: 1,
+
+        totalSales: {
+          $sum: 1,
         },
       },
-    ]);
+    },
+    {
+      $sort: {
+        _id: 1,
+      },
+    },
+  ]);
 
-    return rows.map((row) => ({
-      date: row._id,
-      revenue: row.revenue,
-      canViewFinancials:
-        false as const,
-    }));
-  }
+  return rows.map((row) => ({
+    date: row._id,
+    totalSales: row.totalSales,
+    canViewFinancials: false as const,
+  }));
+}
 
   /*
    * ADMIN chart:

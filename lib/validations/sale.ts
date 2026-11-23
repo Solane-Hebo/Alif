@@ -2,6 +2,12 @@ import { z } from "zod";
 
 import { parseMoneyToMinorUnits } from "@/lib/utils/money";
 
+/*
+ * Form validation.
+ *
+ * salePrice:
+ * "150.00" -> 15000 minor units
+ */
 export const registerSaleSchema = z.object({
   productId: z
     .string()
@@ -18,14 +24,12 @@ export const registerSaleSchema = z.object({
     .trim()
     .min(1, "Sale price is required.")
     .transform((value, ctx) => {
-      const amount =
-        parseMoneyToMinorUnits(value);
+      const amount = parseMoneyToMinorUnits(value);
 
       if (amount === null) {
         ctx.addIssue({
           code: "custom",
-          message:
-            "Enter a valid sale price.",
+          message: "Enter a valid sale price.",
         });
 
         return z.NEVER;
@@ -33,6 +37,34 @@ export const registerSaleSchema = z.object({
 
       return amount;
     }),
+});
+
+/*
+ * Service validation.
+ *
+ * Values are already normalized.
+ * salePrice is stored in minor units.
+ */
+export const registerSaleServiceSchema = z.object({
+  productId: z
+    .string()
+    .trim()
+    .regex(
+      /^[a-fA-F0-9]{24}$/,
+      "Invalid product."
+    ),
+
+  quantity: z
+    .number()
+    .int()
+    .positive()
+    .safe(),
+
+  salePrice: z
+    .number()
+    .int()
+    .nonnegative()
+    .safe(),
 });
 
 export const saleBarcodeLookupSchema = z.object({
@@ -45,3 +77,6 @@ export const saleBarcodeLookupSchema = z.object({
 
 export type RegisterSaleInput =
   z.infer<typeof registerSaleSchema>;
+
+export type RegisterSaleServiceInput =
+  z.infer<typeof registerSaleServiceSchema>;

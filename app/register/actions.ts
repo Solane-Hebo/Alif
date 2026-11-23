@@ -27,14 +27,16 @@ export async function registerAction(
 ): Promise<RegisterState> {
   const parsed = registerSchema.safeParse({
     organizationName: formData.get("organizationName"),
-    name: formData.get("name"),
-    email: formData.get("email"),
-    password: formData.get("password"),
-    confirmPassword: formData.get("confirmPassword"),
-    currency: formData.get("currency"),
-    locale: formData.get("locale"),
-    timezone: formData.get("timezone"),
-    calendar: formData.get("calendar"),
+  name: formData.get("name"),
+  email: formData.get("email"),
+  password: formData.get("password"),
+  confirmPassword: formData.get("confirmPassword"),
+
+  // Default company settings
+  currency: "ETB",
+  locale: "en-ET",
+  timezone: "Africa/Addis_Ababa",
+  calendar: "ethiopic",
   });
 
   if (!parsed.success) {

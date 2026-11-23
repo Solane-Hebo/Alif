@@ -1,4 +1,3 @@
-
 import "server-only";
 
 import { getTenantContext } from "@/lib/auth/tenant";
@@ -7,10 +6,8 @@ import { getLowStockProducts } from "@/lib/services/dashboard/get-low-stock-prod
 import { getOrganizationSettings } from "@/lib/services/organizations/get-organization-settings";
 
 export async function getAIContext() {
-  // Identify the authenticated user and organization.
   const { role } = await getTenantContext();
 
-  // Load business information using existing services.
   const [stats, lowStockProducts, organization] =
     await Promise.all([
       getDashboardStats(),
@@ -22,7 +19,9 @@ export async function getAIContext() {
     throw new Error("Organization unavailable");
   }
 
-  // Only include financial data for authorized admins.
+  /*
+   * Financial information is ADMIN-only.
+   */
   const statistics =
     role === "ADMIN" && stats.canViewFinancials
       ? {
@@ -33,10 +32,8 @@ export async function getAIContext() {
         }
       : {
           totalSales: stats.totalSales,
-          totalRevenue: stats.totalRevenue,
         };
 
-  // Return only approved fields to the AI model.
   return {
     organization: {
       name: organization.name,
@@ -57,7 +54,8 @@ export async function getAIContext() {
         name: product.name,
         sku: product.sku,
         stockQuantity: product.stockQuantity,
-        lowStockThreshold: product.lowStockThreshold,
+        lowStockThreshold:
+          product.lowStockThreshold,
       })
     ),
 

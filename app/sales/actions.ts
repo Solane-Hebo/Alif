@@ -1,13 +1,19 @@
 "use server";
-import { saleBarcodeLookupSchema } from "@/lib/validations/sale";
-
-import { voidSale } from "@/lib/services/sales/void-sale";
 
 import { revalidatePath } from "next/cache";
 
 import { registerSale } from "@/lib/services/sales/register-sale";
-import { registerSaleSchema } from "@/lib/validations/sale";
+import { voidSale } from "@/lib/services/sales/void-sale";
 import { findSaleProductByBarcode } from "@/lib/services/sales/find-sale-product-by-barcode";
+
+import {
+  registerSaleSchema,
+  saleBarcodeLookupSchema,
+} from "@/lib/validations/sale";
+
+/* =====================================================
+   REGISTER SALE
+===================================================== */
 
 export type RegisterSaleState = {
   success?: boolean;
@@ -32,24 +38,34 @@ export async function registerSaleAction(
     };
   }
 
-  const result =
-    await registerSale(parsed.data);
+  const result = await registerSale(parsed.data);
 
   if (!result.success) {
-    if (
-      result.reason ===
-      "INSUFFICIENT_STOCK"
-    ) {
-      return {
-        error:
-          "There is not enough stock for this sale.",
-      };
-    }
+    switch (result.reason) {
+      case "FORBIDDEN":
+        return {
+          error:
+            "You do not have permission to register sales.",
+        };
 
-    return {
-      error:
-        "The selected product could not be found.",
-    };
+      case "INVALID_INPUT":
+        return {
+          error:
+            "Please check the sale information.",
+        };
+
+      case "INSUFFICIENT_STOCK":
+        return {
+          error:
+            "There is not enough stock for this sale.",
+        };
+
+      case "PRODUCT_NOT_FOUND":
+        return {
+          error:
+            "The selected product could not be found.",
+        };
+    }
   }
 
   revalidatePath("/sales");
@@ -62,6 +78,10 @@ export async function registerSaleAction(
   };
 }
 
+/* =====================================================
+   VOID SALE
+===================================================== */
+
 export type VoidSaleState = {
   success?: boolean;
   error?: string;
@@ -71,8 +91,7 @@ export async function voidSaleAction(
   _previousState: VoidSaleState,
   formData: FormData
 ): Promise<VoidSaleState> {
-  const saleId =
-    formData.get("saleId");
+  const saleId = formData.get("saleId");
 
   if (
     typeof saleId !== "string" ||
@@ -83,23 +102,17 @@ export async function voidSaleAction(
     };
   }
 
-  const result =
-    await voidSale(saleId);
+  const result = await voidSale(saleId);
 
   if (!result.success) {
-    if (
-      result.reason === "FORBIDDEN"
-    ) {
+    if (result.reason === "FORBIDDEN") {
       return {
         error:
           "You do not have permission to void sales.",
       };
     }
 
-    if (
-      result.reason ===
-      "ALREADY_VOIDED"
-    ) {
+    if (result.reason === "ALREADY_VOIDED") {
       return {
         error:
           "This sale has already been voided.",
@@ -121,6 +134,10 @@ export async function voidSaleAction(
     success: true,
   };
 }
+
+/* =====================================================
+   BARCODE LOOKUP
+===================================================== */
 
 export type SaleBarcodeLookupState = {
   success?: boolean;

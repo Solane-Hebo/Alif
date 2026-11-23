@@ -1,4 +1,5 @@
 import Link from "next/link";
+
 import {
   ArrowRight,
   ShoppingBag,
@@ -7,14 +8,27 @@ import {
 
 import { formatMoney } from "@/lib/utils/money";
 
-type TopSellingProduct = {
-  rank: number;
-  productName: string;
-  productSku: string;
-  unitsSold: number;
-  revenue: number;
-  salesCount: number;
-};
+type TopSellingProduct =
+  | {
+      rank: number;
+      productName: string;
+      productSku: string;
+      unitsSold: number;
+      salesCount: number;
+
+      canViewFinancials: true;
+      revenue: number;
+    }
+  | {
+      rank: number;
+      productName: string;
+      productSku: string;
+      unitsSold: number;
+      salesCount: number;
+
+      canViewFinancials: false;
+      revenue?: never;
+    };
 
 type TopSellingProductsProps = {
   products: TopSellingProduct[];
@@ -98,7 +112,9 @@ export function TopSellingProducts({
                       aria-label="Top selling product"
                     />
                   ) : (
-                    <span aria-label={`Rank ${product.rank}`}>
+                    <span
+                      aria-label={`Rank ${product.rank}`}
+                    >
                       {product.rank}
                     </span>
                   )}
@@ -116,6 +132,7 @@ export function TopSellingProducts({
               </div>
 
               <div className="shrink-0 text-right">
+                {/* ADMIN and STAFF: Units sold */}
                 <p className="font-semibold text-slate-900">
                   {product.unitsSold.toLocaleString(
                     locale
@@ -123,13 +140,24 @@ export function TopSellingProducts({
                   sold
                 </p>
 
-                <p className="mt-1 text-xs text-slate-500">
-                  {formatMoney(
-                    product.revenue,
-                    currency,
-                    locale
-                  )}
-                </p>
+                {/* ADMIN: Revenue */}
+                {product.canViewFinancials ? (
+                  <p className="mt-1 text-xs text-slate-500">
+                    {formatMoney(
+                      product.revenue,
+                      currency,
+                      locale
+                    )}
+                  </p>
+                ) : (
+                  /* STAFF: Number of sales */
+                  <p className="mt-1 text-xs text-slate-500">
+                    {product.salesCount.toLocaleString(
+                      locale
+                    )}{" "}
+                    sales
+                  </p>
+                )}
               </div>
             </div>
           ))}

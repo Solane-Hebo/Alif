@@ -16,11 +16,12 @@ type GetProductsOptions = {
   stock?: ProductStockFilter;
 };
 
+/**
+ * Escape special regex characters so search input
+ * is treated as literal text.
+ */
 function escapeRegex(value: string) {
-  return value.replace(
-    /[.*+?^${}()|[\]\\]/g,
-    "\\$&"
-  );
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 export async function getProducts({
@@ -28,6 +29,7 @@ export async function getProducts({
   category = "",
   stock = "all",
 }: GetProductsOptions = {}) {
+  // Always derive tenant and role from the authenticated user.
   const { organizationId, role } =
     await getTenantContext();
 
@@ -36,14 +38,15 @@ export async function getProducts({
   const trimmedSearch = search.trim();
   const trimmedCategory = category.trim();
 
+  // Every query must be scoped to the current organization.
   const query: Record<string, unknown> = {
     organizationId,
     isActive: true,
   };
 
+  // Search by name, SKU or barcode.
   if (trimmedSearch) {
-    const safeSearch =
-      escapeRegex(trimmedSearch);
+    const safeSearch = escapeRegex(trimmedSearch);
 
     query.$or = [
       {
@@ -67,32 +70,49 @@ export async function getProducts({
     ];
   }
 
+  // Filter by category.
   if (trimmedCategory) {
     query.category = trimmedCategory;
   }
 
+  // Stock status filters.
   if (stock === "out-of-stock") {
     query.stockQuantity = 0;
   }
 
-  if (stock === "in-stock") {
-    query.stockQuantity = {
-      $gt: 0,
+  if (stock === "low-stock") {
+    query.stockQuantity = { $gt: 0 };
+
+    query.$expr = {
+      $lte: [
+        "$stockQuantity",
+        "$lowStockThreshold",
+      ],
     };
   }
 
+  if (stock === "in-stock") {
+    query.$expr = {
+      $gt: [
+        "$stockQuantity",
+        "$lowStockThreshold",
+      ],
+    };
+  }
+
+  // STAFF must never receive purchase prices.
   const productFields =
-  role === "ADMIN"
-    ? "_id name sku barcode category description purchasePrice sellingPrice stockQuantity lowStockThreshold"
-    : "_id name sku barcode category description sellingPrice stockQuantity lowStockThreshold";
+    role === "ADMIN"
+      ? "_id name sku barcode category description purchasePrice sellingPrice stockQuantity lowStockThreshold"
+      : "_id name sku barcode category description sellingPrice stockQuantity lowStockThreshold";
 
-const products = await Product.find(query)
-  .select(productFields)
-  .sort({ createdAt: -1 })
-  .lean();
+  const products = await Product.find(query)
+    .select(productFields)
+    .sort({ createdAt: -1 })
+    .lean();
 
- const serializedProducts = products.map(
-  (product) => ({
+  // Return plain serializable objects.
+  return products.map((product) => ({
     id: product._id.toString(),
     name: product.name,
     sku: product.sku,
@@ -106,29 +126,8 @@ const products = await Product.find(query)
 
     ...(role === "ADMIN"
       ? {
-          purchasePrice:
-            product.purchasePrice,
+          purchasePrice: product.purchasePrice,
         }
       : {}),
-  })
-);
-
-  if (stock === "low-stock") {
-    return serializedProducts.filter(
-      (product) =>
-        product.stockQuantity > 0 &&
-        product.stockQuantity <=
-          product.lowStockThreshold
-    );
-  }
-
-  if (stock === "in-stock") {
-    return serializedProducts.filter(
-      (product) =>
-        product.stockQuantity >
-        product.lowStockThreshold
-    );
-  }
-
-  return serializedProducts;
+  }));
 }

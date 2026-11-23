@@ -207,8 +207,7 @@ export async function updateProductAction(
 export async function archiveProductAction(
   formData: FormData
 ) {
-  const productId =
-    formData.get("productId");
+  const productId = formData.get("productId");
 
   if (
     typeof productId !== "string" ||
@@ -217,7 +216,11 @@ export async function archiveProductAction(
     return;
   }
 
-  await archiveProduct(productId);
+  const result = await archiveProduct(productId);
+
+  if (!result.success) {
+    return;
+  }
 
   revalidatePath("/products");
   revalidatePath("/inventory");

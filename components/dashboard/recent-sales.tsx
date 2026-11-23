@@ -1,4 +1,5 @@
 import Link from "next/link";
+
 import {
   ArrowRight,
   ShoppingCart,
@@ -10,23 +11,40 @@ import {
   formatDateTime,
   type SupportedCalendar,
 } from "@/lib/utils/date-format";
+
 import { formatMoney } from "@/lib/utils/money";
 
-type RecentSale = {
-  id: string;
-  productName: string;
-  productSku: string;
-  quantity: number;
-  revenue: number;
-  status: string;
-  soldByName: string;
-  createdAt: string;
+type RecentSale =
+  | {
+      id: string;
+      productName: string;
+      productSku: string;
+      quantity: number;
+      status: string;
+      soldByName: string;
+      createdAt: string;
 
-  canViewFinancials: boolean;
+      canViewFinancials: true;
 
-  cost?: number;
-  profit?: number;
-};
+      revenue: number;
+      cost: number;
+      profit: number;
+    }
+  | {
+      id: string;
+      productName: string;
+      productSku: string;
+      quantity: number;
+      status: string;
+      soldByName: string;
+      createdAt: string;
+
+      canViewFinancials: false;
+
+      revenue?: never;
+      cost?: never;
+      profit?: never;
+    };
 
 type RecentSalesProps = {
   sales: RecentSale[];
@@ -107,14 +125,12 @@ export function RecentSales({
 
                   <Badge
                     variant={
-                      sale.status ===
-                      "COMPLETED"
+                      sale.status === "COMPLETED"
                         ? "secondary"
                         : "outline"
                     }
                   >
-                    {sale.status ===
-                    "COMPLETED"
+                    {sale.status === "COMPLETED"
                       ? "Completed"
                       : "Voided"}
                   </Badge>
@@ -143,18 +159,17 @@ export function RecentSales({
                 </p>
               </div>
 
-              <div className="shrink-0 sm:text-right">
-                <p className="font-semibold text-slate-900">
-                  {formatMoney(
-                    sale.revenue,
-                    currency,
-                    locale
-                  )}
-                </p>
+              {/* Financial information: ADMIN only */}
+              {sale.canViewFinancials ? (
+                <div className="shrink-0 sm:text-right">
+                  <p className="font-semibold text-slate-900">
+                    {formatMoney(
+                      sale.revenue,
+                      currency,
+                      locale
+                    )}
+                  </p>
 
-                {sale.canViewFinancials &&
-                sale.profit !==
-                  undefined ? (
                   <p className="mt-1 text-xs text-slate-500">
                     Profit{" "}
                     {formatMoney(
@@ -163,8 +178,8 @@ export function RecentSales({
                       locale
                     )}
                   </p>
-                ) : null}
-              </div>
+                </div>
+              ) : null}
             </div>
           ))}
         </div>

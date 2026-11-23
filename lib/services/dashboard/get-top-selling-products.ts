@@ -9,21 +9,75 @@ import { Sale } from "@/lib/models/sale.model";
 const TOP_PRODUCTS_LIMIT = 5;
 
 export async function getTopSellingProducts() {
-  const { organizationId } =
+  const { organizationId, role } =
     await getTenantContext();
 
   await connectToDatabase();
 
   const organizationObjectId =
-    new mongoose.Types.ObjectId(
-      organizationId
-    );
+    new mongoose.Types.ObjectId(organizationId);
 
+  /*
+   * STAFF:
+   * Only operational sales statistics.
+   * No revenue, cost or profit.
+   */
+  if (role !== "ADMIN") {
+    const products = await Sale.aggregate([
+      {
+        $match: {
+          organizationId: organizationObjectId,
+          status: "COMPLETED",
+        },
+      },
+      {
+        $group: {
+          _id: {
+            productName: "$productName",
+            productSku: "$productSku",
+          },
+
+          unitsSold: {
+            $sum: "$quantity",
+          },
+
+          salesCount: {
+            $sum: 1,
+          },
+        },
+      },
+      {
+        $sort: {
+          unitsSold: -1,
+          salesCount: -1,
+        },
+      },
+      {
+        $limit: TOP_PRODUCTS_LIMIT,
+      },
+    ]);
+
+    return products.map((product, index) => ({
+      rank: index + 1,
+
+      productName: product._id.productName,
+      productSku: product._id.productSku,
+
+      unitsSold: product.unitsSold,
+      salesCount: product.salesCount,
+
+      canViewFinancials: false as const,
+    }));
+  }
+
+  /*
+   * ADMIN:
+   * Operational statistics and revenue.
+   */
   const products = await Sale.aggregate([
     {
       $match: {
-        organizationId:
-          organizationObjectId,
+        organizationId: organizationObjectId,
         status: "COMPLETED",
       },
     },
@@ -63,24 +117,17 @@ export async function getTopSellingProducts() {
     },
   ]);
 
-  return products.map(
-    (product, index) => ({
-      rank: index + 1,
+  return products.map((product, index) => ({
+    rank: index + 1,
 
-      productName:
-        product._id.productName,
+    productName: product._id.productName,
+    productSku: product._id.productSku,
 
-      productSku:
-        product._id.productSku,
+    unitsSold: product.unitsSold,
+    salesCount: product.salesCount,
 
-      unitsSold:
-        product.unitsSold,
+    revenue: product.revenue,
 
-      revenue:
-        product.revenue,
-
-      salesCount:
-        product.salesCount,
-    })
-  );
+    canViewFinancials: true as const,
+  }));
 }

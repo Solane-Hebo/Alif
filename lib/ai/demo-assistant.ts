@@ -1,9 +1,22 @@
-
 import { formatMoney } from "@/lib/utils/money";
+
+type DemoStatistics =
+  | {
+      totalSales: number;
+      totalRevenue: number;
+      totalCost: number;
+      totalProfit: number;
+    }
+  | {
+      totalSales: number;
+      totalRevenue?: never;
+      totalCost?: never;
+      totalProfit?: never;
+    };
 
 type DemoContext = {
   user: {
-    role: string;
+    role: "ADMIN" | "STAFF";
   };
 
   organization: {
@@ -14,12 +27,7 @@ type DemoContext = {
 
   statisticsPeriod: string;
 
-  statistics: {
-    totalSales: number;
-    totalRevenue: number;
-    totalCost?: number;
-    totalProfit?: number;
-  };
+  statistics: DemoStatistics;
 
   lowStockProducts: Array<{
     name: string;
@@ -43,14 +51,50 @@ export function getDemoResponse(
     lowStockProducts,
   } = context;
 
-  // Use the same currency formatter as the dashboard.
-  const formatCurrency = (amount: number): string => {
-    return formatMoney(
+  const isAdmin = context.user.role === "ADMIN";
+
+  const canViewFinancials =
+    isAdmin &&
+    statistics.totalRevenue !== undefined &&
+    statistics.totalCost !== undefined &&
+    statistics.totalProfit !== undefined;
+
+  const formatCurrency = (amount: number): string =>
+    formatMoney(
       amount,
       organization.currency,
       organization.locale
     );
-  };
+
+  const restrictedResponse = [
+    "Access Restricted",
+    "",
+    "Financial information is available",
+    "to administrators only.",
+  ].join("\n");
+
+  // Handle profit, cost and purchase-price questions first.
+  if (
+    question.includes("profit") ||
+    question.includes("cost") ||
+    question.includes("purchase price") ||
+    question.includes("financial overview")
+  ) {
+    if (!canViewFinancials) {
+      return restrictedResponse;
+    }
+
+    return [
+      "Financial Overview (All Time)",
+      "",
+      `Total transactions: ${statistics.totalSales}`,
+      `Total revenue: ${formatCurrency(statistics.totalRevenue!)}`,
+      `Total cost: ${formatCurrency(statistics.totalCost!)}`,
+      `Total profit: ${formatCurrency(statistics.totalProfit!)}`,
+      "",
+      "These figures are based on completed sales.",
+    ].join("\n");
+  }
 
   // Handle sales and revenue questions.
   if (
@@ -61,46 +105,30 @@ export function getDemoResponse(
     question.includes("how many sales") ||
     question.includes("transactions")
   ) {
-    return [
-      "Sales Overview (All Time)",
-      "",
-      `Total transactions: ${statistics.totalSales}`,
-      `Total revenue: ${formatCurrency(statistics.totalRevenue)}`,
-      "",
-      "These figures are based on your organization's available data.",
-    ].join("\n");
-  }
+    const asksForRevenue =
+      question.includes("revenue") ||
+      question.includes("how much have we sold");
 
-  // Handle profit and cost questions for admins.
-  if (
-    question.includes("profit") ||
-    question.includes("cost") ||
-    question.includes("purchase price") ||
-    question.includes("financial overview")
-  ) {
-    if (
-      context.user.role !== "ADMIN" ||
-      statistics.totalProfit === undefined ||
-      statistics.totalCost === undefined
-    ) {
+    if (asksForRevenue && !canViewFinancials) {
+      return restrictedResponse;
+    }
+
+    if (!canViewFinancials) {
       return [
-        "Access Restricted",
+        "Sales Overview (All Time)",
         "",
-        "You do not have permission to view",
-        "cost or profit information.",
+        `Total transactions: ${statistics.totalSales}`,
         "",
-        "Please contact your administrator",
-        "if you need access.",
+        "Financial totals are available",
+        "to administrators only.",
       ].join("\n");
     }
 
     return [
-      "Financial Overview (All Time)",
+      "Sales Overview (All Time)",
       "",
       `Total transactions: ${statistics.totalSales}`,
-      `Total revenue: ${formatCurrency(statistics.totalRevenue)}`,
-      `Total cost: ${formatCurrency(statistics.totalCost)}`,
-      `Total profit: ${formatCurrency(statistics.totalProfit)}`,
+      `Total revenue: ${formatCurrency(statistics.totalRevenue!)}`,
       "",
       "These figures are based on completed sales.",
     ].join("\n");
@@ -118,9 +146,6 @@ export function getDemoResponse(
         "",
         "No low-stock products were found",
         "in the available inventory results.",
-        "",
-        "Your inventory currently has no",
-        "reported low-stock alerts.",
       ].join("\n");
     }
 
@@ -215,9 +240,14 @@ export function getDemoResponse(
       "",
       "Available Features:",
       "",
-      "- View total sales and revenue",
+      "- View total sales",
+      ...(isAdmin
+        ? [
+            "- View total revenue",
+            "- View cost and profit",
+          ]
+        : []),
       "- Check low-stock products",
-      "- View financial information (ADMIN only)",
       "- Learn how to register sales",
       "- Get general business recommendations",
       "",
@@ -226,7 +256,7 @@ export function getDemoResponse(
     ].join("\n");
   }
 
-  // Default response for unsupported questions.
+  // Default response.
   return [
     "ALIF AI Assistant - Demo Mode",
     "",
@@ -234,10 +264,14 @@ export function getDemoResponse(
     "",
     "You can ask questions such as:",
     "",
-    "- What is our total revenue?",
     "- How many sales have we completed?",
     "- Which products are low on stock?",
-    "- What is our total profit?",
+    ...(isAdmin
+      ? [
+          "- What is our total revenue?",
+          "- What is our total profit?",
+        ]
+      : []),
     "- How do I register a sale?",
     "- How can we improve our sales?",
     "",

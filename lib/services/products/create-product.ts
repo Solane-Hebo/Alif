@@ -22,7 +22,7 @@ type CreateProductData = {
 export async function createProduct(
   data: CreateProductData
 ) {
-  const { organizationId, userId } =
+  const { organizationId, userId, role } =
     await getTenantContext();
 
   await connectToDatabase();
@@ -90,7 +90,9 @@ export async function createProduct(
                   data.description,
 
                 purchasePrice:
-                  data.purchasePrice,
+                  role === "ADMIN"
+                  ? data.purchasePrice
+                  : 0,
 
                 sellingPrice:
                   data.sellingPrice,

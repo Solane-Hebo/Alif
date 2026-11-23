@@ -7,49 +7,31 @@ import { connectToDatabase } from "@/lib/db/mongoose";
 import { Sale } from "@/lib/models/sale.model";
 
 export async function getDashboardStats() {
-  const {
-    organizationId,
-    role,
-  } = await getTenantContext();
+  const { organizationId, role } =
+    await getTenantContext();
 
   await connectToDatabase();
 
   const organizationObjectId =
-    new mongoose.Types.ObjectId(
-      organizationId
-    );
+    new mongoose.Types.ObjectId(organizationId);
 
   /*
-   * STAFF only needs operational sales
-   * statistics.
-   *
-   * purchasePriceAtSale is not referenced
-   * anywhere in the STAFF aggregation.
+   * STAFF can only view operational statistics.
+   * Revenue, cost and profit are ADMIN-only.
    */
   if (role !== "ADMIN") {
     const result = await Sale.aggregate([
       {
         $match: {
-          organizationId:
-            organizationObjectId,
+          organizationId: organizationObjectId,
           status: "COMPLETED",
         },
       },
       {
         $group: {
           _id: null,
-
           totalSales: {
             $sum: 1,
-          },
-
-          totalRevenue: {
-            $sum: {
-              $multiply: [
-                "$salePrice",
-                "$quantity",
-              ],
-            },
           },
         },
       },
@@ -57,30 +39,21 @@ export async function getDashboardStats() {
 
     const stats = result[0] ?? {
       totalSales: 0,
-      totalRevenue: 0,
     };
 
     return {
-      totalSales:
-        stats.totalSales,
-
-      totalRevenue:
-        stats.totalRevenue,
-
-      canViewFinancials:
-        false as const,
+      totalSales: stats.totalSales,
+      canViewFinancials: false as const,
     };
   }
 
   /*
-   * ADMIN aggregation includes internal
-   * purchase-cost information.
+   * ADMIN can view revenue, cost and profit.
    */
   const result = await Sale.aggregate([
     {
       $match: {
-        organizationId:
-          organizationObjectId,
+        organizationId: organizationObjectId,
         status: "COMPLETED",
       },
     },
@@ -120,22 +93,13 @@ export async function getDashboardStats() {
   };
 
   const totalProfit =
-    stats.totalRevenue -
-    stats.totalCost;
+    stats.totalRevenue - stats.totalCost;
 
   return {
-    totalSales:
-      stats.totalSales,
-
-    totalRevenue:
-      stats.totalRevenue,
-
-    totalCost:
-      stats.totalCost,
-
+    totalSales: stats.totalSales,
+    totalRevenue: stats.totalRevenue,
+    totalCost: stats.totalCost,
     totalProfit,
-
-    canViewFinancials:
-      true as const,
+    canViewFinancials: true as const,
   };
 }

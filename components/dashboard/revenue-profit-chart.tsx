@@ -14,19 +14,28 @@ import {
 import type { SupportedCalendar } from "@/lib/utils/date-format";
 import { formatMoney } from "@/lib/utils/money";
 
-type ChartItem = {
+type AdminChartItem = {
   date: string;
   revenue: number;
-  canViewFinancials: boolean;
-  cost?: number;
-  profit?: number;
+  cost: number;
+  profit: number;
+  canViewFinancials: true;
 };
+
+type StaffChartItem = {
+  date: string;
+  totalSales: number;
+  canViewFinancials: false;
+};
+
+type ChartItem = AdminChartItem | StaffChartItem;
 
 type RevenueProfitChartProps = {
   data: ChartItem[];
   currency: string;
   locale: string;
   calendar: SupportedCalendar;
+  isAdmin: boolean;
 };
 
 function formatChartDate(
@@ -34,26 +43,20 @@ function formatChartDate(
   locale: string,
   calendar: SupportedCalendar
 ) {
-  const date = new Date(
-    `${value}T12:00:00`
-  );
+  const date = new Date(`${value}T12:00:00`);
 
   if (Number.isNaN(date.getTime())) {
     return value;
   }
 
-  const resolvedLocale =
-    new Intl.Locale(locale, {
-      calendar,
-    }).toString();
+  const resolvedLocale = new Intl.Locale(locale, {
+    calendar,
+  }).toString();
 
-  return new Intl.DateTimeFormat(
-    resolvedLocale,
-    {
-      month: "short",
-      day: "numeric",
-    }
-  ).format(date);
+  return new Intl.DateTimeFormat(resolvedLocale, {
+    month: "short",
+    day: "numeric",
+  }).format(date);
 }
 
 export function RevenueProfitChart({
@@ -61,18 +64,17 @@ export function RevenueProfitChart({
   currency,
   locale,
   calendar,
+  isAdmin,
 }: RevenueProfitChartProps) {
-  const canViewFinancials =
-    data[0]?.canViewFinancials === true;
+  const chartTitle = isAdmin
+    ? "Revenue, Cost & Profit"
+    : "Sales Transactions";
 
   if (data.length === 0) {
     return (
       <div className="rounded-xl border bg-white p-6">
         <h2 className="text-lg font-semibold text-slate-900">
-          Revenue
-          {canViewFinancials
-            ? ", Cost & Profit"
-            : ""}
+          {chartTitle}
         </h2>
 
         <div className="flex h-[300px] items-center justify-center">
@@ -88,9 +90,7 @@ export function RevenueProfitChart({
     <div className="rounded-xl border bg-white p-6 shadow-sm">
       <div>
         <h2 className="text-lg font-semibold text-slate-900">
-          {canViewFinancials
-            ? "Revenue, Cost & Profit"
-            : "Revenue"}
+          {chartTitle}
         </h2>
 
         <p className="mt-1 text-sm text-slate-500">
@@ -102,10 +102,7 @@ export function RevenueProfitChart({
         className="mt-6 h-[320px] w-full"
         aria-hidden="true"
       >
-        <ResponsiveContainer
-          width="100%"
-          height="100%"
-        >
+        <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>
             <CartesianGrid
               strokeDasharray="3 3"
@@ -124,16 +121,16 @@ export function RevenueProfitChart({
             />
 
             <YAxis
+              allowDecimals={isAdmin}
               tickFormatter={(value) =>
-                new Intl.NumberFormat(
-                  locale,
-                  {
-                    notation: "compact",
-                    maximumFractionDigits: 1,
-                  }
-                ).format(
-                  Number(value) / 100
-                )
+                isAdmin
+                  ? new Intl.NumberFormat(locale, {
+                      notation: "compact",
+                      maximumFractionDigits: 1,
+                    }).format(Number(value) / 100)
+                  : new Intl.NumberFormat(locale).format(
+                      Number(value)
+                    )
               }
             />
 
@@ -145,32 +142,33 @@ export function RevenueProfitChart({
                   calendar
                 )
               }
-              formatter={(
-                value,
-                name
-              ) => [
-                formatMoney(
-                  Number(value),
-                  currency,
-                  locale
-                ),
+              formatter={(value, name) => [
+                isAdmin
+                  ? formatMoney(
+                      Number(value),
+                      currency,
+                      locale
+                    )
+                  : new Intl.NumberFormat(locale).format(
+                      Number(value)
+                    ),
                 String(name),
               ]}
             />
 
             <Legend />
 
-            <Line
-              type="monotone"
-              dataKey="revenue"
-              name="Revenue"
-              stroke="currentColor"
-              strokeWidth={2}
-              dot={false}
-            />
-
-            {canViewFinancials ? (
+            {isAdmin ? (
               <>
+                <Line
+                  type="monotone"
+                  dataKey="revenue"
+                  name="Revenue"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  dot={false}
+                />
+
                 <Line
                   type="monotone"
                   dataKey="cost"
@@ -189,7 +187,16 @@ export function RevenueProfitChart({
                   dot={false}
                 />
               </>
-            ) : null}
+            ) : (
+              <Line
+                type="monotone"
+                dataKey="totalSales"
+                name="Sales"
+                stroke="currentColor"
+                strokeWidth={2}
+                dot={false}
+              />
+            )}
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -206,24 +213,21 @@ export function RevenueProfitChart({
                 locale,
                 calendar
               )}
-              : Revenue{" "}
-              {formatMoney(
-                item.revenue,
-                currency,
-                locale
-              )}
-
               {item.canViewFinancials
-                ? `, Cost ${formatMoney(
-                    item.cost ?? 0,
+                ? `: Revenue ${formatMoney(
+                    item.revenue,
+                    currency,
+                    locale
+                  )}, Cost ${formatMoney(
+                    item.cost,
                     currency,
                     locale
                   )}, Profit ${formatMoney(
-                    item.profit ?? 0,
+                    item.profit,
                     currency,
                     locale
                   )}`
-                : ""}
+                : `: ${item.totalSales} sales`}
             </li>
           ))}
         </ul>

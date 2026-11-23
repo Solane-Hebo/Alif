@@ -7,30 +7,77 @@ import { connectToDatabase } from "@/lib/db/mongoose";
 import { Product } from "@/lib/models/product.model";
 import { Sale } from "@/lib/models/sale.model";
 import { StockMovement } from "@/lib/models/stock-movement.model";
-
+import { registerSaleServiceSchema } from "@/lib/validations/sale";
 type RegisterSaleData = {
   productId: string;
   quantity: number;
   salePrice: number;
 };
 
+type RegisterSaleResult =
+  | {
+      success: true;
+      saleId: string;
+    }
+  | {
+      success: false;
+      reason:
+        | "PRODUCT_NOT_FOUND"
+        | "INSUFFICIENT_STOCK"
+        | "INVALID_INPUT"
+        | "FORBIDDEN";
+    };
+
 export async function registerSale(
   data: RegisterSaleData
-) {
+): Promise<RegisterSaleResult> {
   const {
     organizationId,
     userId,
+    role,
   } = await getTenantContext();
+
+  /*
+   * Only ADMIN and STAFF may
+   * register sales.
+   */
+  if (
+    role !== "ADMIN" &&
+    role !== "STAFF"
+  ) {
+    return {
+      success: false,
+      reason: "FORBIDDEN",
+    };
+  }
+
+  /*
+   * Validate again at the service
+   * boundary, not only in the action.
+   */
+  const parsed = registerSaleServiceSchema.safeParse(data);
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      reason: "INVALID_INPUT",
+    };
+  }
+
+  const {
+    productId,
+    quantity,
+    salePrice,
+  } = parsed.data;
 
   if (
     !mongoose.Types.ObjectId.isValid(
-      data.productId
+      productId
     )
   ) {
     return {
-      success: false as const,
-      reason:
-        "PRODUCT_NOT_FOUND" as const,
+      success: false,
+      reason: "PRODUCT_NOT_FOUND",
     };
   }
 
@@ -41,16 +88,7 @@ export async function registerSale(
 
   try {
     let result:
-      | {
-          success: true;
-          saleId: string;
-        }
-      | {
-          success: false;
-          reason:
-            | "PRODUCT_NOT_FOUND"
-            | "INSUFFICIENT_STOCK";
-        }
+      | RegisterSaleResult
       | undefined;
 
     await session.withTransaction(
@@ -58,24 +96,23 @@ export async function registerSale(
         /*
          * Atomic stock decrement.
          *
-         * The $gte condition prevents the
+         * The $gte condition prevents
          * inventory from going below zero.
          */
         const product =
           await Product.findOneAndUpdate(
             {
-              _id: data.productId,
+              _id: productId,
               organizationId,
               isActive: true,
 
               stockQuantity: {
-                $gte: data.quantity,
+                $gte: quantity,
               },
             },
             {
               $inc: {
-                stockQuantity:
-                  -data.quantity,
+                stockQuantity: -quantity,
               },
 
               $set: {
@@ -84,10 +121,8 @@ export async function registerSale(
             },
             {
               /*
-               * We want the product BEFORE
-               * the stock update so we can
-               * calculate stockBefore and
-               * stockAfter reliably.
+               * Return product before
+               * the stock update.
                */
               new: false,
               session,
@@ -97,7 +132,7 @@ export async function registerSale(
         if (!product) {
           const existingProduct =
             await Product.findOne({
-              _id: data.productId,
+              _id: productId,
               organizationId,
               isActive: true,
             })
@@ -109,8 +144,7 @@ export async function registerSale(
           if (!existingProduct) {
             result = {
               success: false,
-              reason:
-                "PRODUCT_NOT_FOUND",
+              reason: "PRODUCT_NOT_FOUND",
             };
 
             return;
@@ -118,8 +152,7 @@ export async function registerSale(
 
           result = {
             success: false,
-            reason:
-              "INSUFFICIENT_STOCK",
+            reason: "INSUFFICIENT_STOCK",
           };
 
           return;
@@ -129,11 +162,14 @@ export async function registerSale(
           product.stockQuantity;
 
         const stockAfter =
-          stockBefore -
-          data.quantity;
+          stockBefore - quantity;
 
         /*
-         * Create the sale.
+         * Create sale.
+         *
+         * Purchase price is always
+         * read from the product,
+         * never from user input.
          */
         const sales =
           await Sale.create(
@@ -150,14 +186,12 @@ export async function registerSale(
                 productSku:
                   product.sku,
 
-                quantity:
-                  data.quantity,
+                quantity,
 
                 purchasePriceAtSale:
                   product.purchasePrice,
 
-                salePrice:
-                  data.salePrice,
+                salePrice,
 
                 status:
                   "COMPLETED",
@@ -175,7 +209,7 @@ export async function registerSale(
 
         /*
          * Create inventory audit record
-         * inside the SAME transaction.
+         * inside the same transaction.
          */
         await StockMovement.create(
           [
@@ -194,7 +228,7 @@ export async function registerSale(
               type: "SALE",
 
               quantityChange:
-                -data.quantity,
+                -quantity,
 
               stockBefore,
               stockAfter,

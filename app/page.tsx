@@ -48,6 +48,8 @@ export default async function Home() {
     return null;
   }
 
+  const isAdmin = stats.canViewFinancials;
+
   return (
     <DashboardLayout>
       <section aria-labelledby="dashboard-heading">
@@ -74,22 +76,26 @@ export default async function Home() {
         {/* Sales KPI cards */}
         <div
           className={`mt-8 grid gap-4 sm:grid-cols-2 ${
-            stats.canViewFinancials
+            isAdmin
               ? "xl:grid-cols-4"
-              : "xl:grid-cols-2"
+              : "xl:grid-cols-1"
           }`}
         >
-          <StatCard
-            title="Total Revenue"
-            value={formatMoney(
-              stats.totalRevenue,
-              organization.currency,
-              organization.locale
-            )}
-            description="Completed sales"
-            icon={DollarSign}
-          />
+          {/* ADMIN only: Total Revenue */}
+          {stats.canViewFinancials ? (
+            <StatCard
+              title="Total Revenue"
+              value={formatMoney(
+                stats.totalRevenue,
+                organization.currency,
+                organization.locale
+              )}
+              description="Completed sales"
+              icon={DollarSign}
+            />
+          ) : null}
 
+          {/* ADMIN and STAFF: Total Sales */}
           <StatCard
             title="Total Sales"
             value={stats.totalSales.toLocaleString(
@@ -101,6 +107,7 @@ export default async function Home() {
             iconBackgroundClassName="bg-blue-100"
           />
 
+          {/* ADMIN only: Cost and Profit */}
           {stats.canViewFinancials ? (
             <>
               <StatCard
@@ -140,6 +147,7 @@ export default async function Home() {
               : "xl:grid-cols-2"
           }`}
         >
+          {/* ADMIN and STAFF: Total Products */}
           <StatCard
             title="Total Products"
             value={inventoryStats.totalProducts.toLocaleString(
@@ -151,6 +159,7 @@ export default async function Home() {
             iconBackgroundClassName="bg-blue-100"
           />
 
+          {/* ADMIN and STAFF: Low Stock */}
           <StatCard
             title="Low Stock Items"
             value={inventoryStats.lowStockItems.toLocaleString(
@@ -162,6 +171,7 @@ export default async function Home() {
             iconBackgroundClassName="bg-amber-100"
           />
 
+          {/* ADMIN only: Inventory Value */}
           {inventoryStats.canViewInventoryValue ? (
             <StatCard
               title="Inventory Value"
@@ -178,13 +188,14 @@ export default async function Home() {
           ) : null}
         </div>
 
-        {/* Revenue / Cost / Profit chart */}
+        {/* Dashboard chart */}
         <div className="mt-6">
           <RevenueProfitChart
             data={chartData}
             currency={organization.currency}
             locale={organization.locale}
             calendar={organization.calendar}
+            isAdmin={isAdmin}
           />
         </div>
 

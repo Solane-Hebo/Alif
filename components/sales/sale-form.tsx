@@ -203,10 +203,13 @@ export function SaleForm({
       selectedProduct.stockQuantity;
 
   const canSubmit =
-    Boolean(selectedProductId) &&
-    !outOfStock &&
-    !insufficientStock &&
-    !salePending;
+  Boolean(selectedProductId) &&
+  Number.isSafeInteger(requestedQuantity) &&
+  requestedQuantity > 0 &&
+  salePrice.trim().length > 0 &&
+  !outOfStock &&
+  !insufficientStock &&
+  !salePending;
 
   return (
     <div className="space-y-6">

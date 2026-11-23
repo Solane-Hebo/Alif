@@ -114,7 +114,9 @@ export async function updateProduct(
               data.description,
 
             purchasePrice:
-              data.purchasePrice,
+              role === "ADMIN"
+    ? data.purchasePrice
+    : 0,
 
             sellingPrice:
               data.sellingPrice,

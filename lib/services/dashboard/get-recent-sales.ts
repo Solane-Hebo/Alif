@@ -8,21 +8,19 @@ import { User } from "@/lib/models/user.model";
 const RECENT_SALES_LIMIT = 5;
 
 export async function getRecentSales() {
-  const {
-    organizationId,
-    role,
-  } = await getTenantContext();
+  const { organizationId, role } =
+    await getTenantContext();
 
   await connectToDatabase();
 
   /*
-   * Financial purchase-cost data is
-   * selected only for ADMIN.
+   * ADMIN receives financial fields.
+   * STAFF receives operational fields only.
    */
   const saleFields =
     role === "ADMIN"
       ? "_id productName productSku quantity salePrice purchasePriceAtSale status soldBy createdAt"
-      : "_id productName productSku quantity salePrice status soldBy createdAt";
+      : "_id productName productSku quantity status soldBy createdAt";
 
   const sales = await Sale.find({
     organizationId,
@@ -60,26 +58,16 @@ export async function getRecentSales() {
   );
 
   return sales.map((sale) => {
-    const revenue =
-      sale.salePrice *
-      sale.quantity;
-
     const baseSale = {
       id: sale._id.toString(),
 
-      productName:
-        sale.productName,
+      productName: sale.productName,
 
-      productSku:
-        sale.productSku,
+      productSku: sale.productSku,
 
-      quantity:
-        sale.quantity,
+      quantity: sale.quantity,
 
-      revenue,
-
-      status:
-        sale.status,
+      status: sale.status,
 
       soldByName:
         sellerMap.get(
@@ -91,8 +79,7 @@ export async function getRecentSales() {
     };
 
     /*
-     * STAFF receives operational
-     * information only.
+     * STAFF: no revenue, cost or profit.
      */
     if (role !== "ADMIN") {
       return {
@@ -101,23 +88,26 @@ export async function getRecentSales() {
       };
     }
 
-    const purchasePriceAtSale =
-      sale.purchasePriceAtSale!;
+    /*
+     * ADMIN: financial information.
+     */
+    const revenue =
+      sale.salePrice! * sale.quantity;
 
     const cost =
-      purchasePriceAtSale *
+      sale.purchasePriceAtSale! *
       sale.quantity;
 
-    const profit =
-      revenue - cost;
+    const profit = revenue - cost;
 
     return {
       ...baseSale,
 
-      canViewFinancials: true as const,
-
+      revenue,
       cost,
       profit,
+
+      canViewFinancials: true as const,
     };
   });
 }
